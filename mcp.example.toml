@@ -1,0 +1,79 @@
+# agent-memory configuration. Copy to mcp.toml (gitignored) and adjust.
+# Secrets NEVER go in this file - every credential is a { env = "..." } or
+# { file = "..." } reference resolved at startup.
+
+log_level = "info"
+
+[http]
+host = "127.0.0.1"
+port = 3010
+
+[stdio]
+# The namespace stdio callers act as (the OS process boundary is the auth).
+# Optional: omit the whole block for an HTTP-only deployment. Required - with
+# no default - if you run `npm run start:stdio`.
+agent_id = "default"
+
+[database]
+host = "127.0.0.1"
+port = 5432
+# Required, and deliberately not defaulted: pointing a memory server at the
+# wrong database is silent - every search simply returns nothing.
+database = "memory"
+user = "agent_user"
+password = { env = "RZEM_MEMORY_DB_PASSWORD" }
+
+[embeddings.thoughts]
+# 768-d nomic - the conversational corpus space. Dimension is load-bearing.
+host = "http://127.0.0.1:11434"
+model = "nomic-embed-text"
+dimensions = 768
+
+[embeddings.documents]
+# 1024-d bge-m3 - the vault documents/tree space. Dimension is load-bearing.
+host = "http://127.0.0.1:11434"
+model = "bge-m3"
+dimensions = 1024
+
+[search]
+default_mode = "recency_weighted"
+recency_decay_days = 90
+recency_floor = 0.1
+
+[vault]
+# Uncomment when the vault Markdown tree is mounted on this host; otherwise
+# memory_read_document serves reconstructed chunk text.
+# dir = "/srv/vault"
+
+[auth]
+enabled = true
+
+# Static bearer tokens: each maps a secret to an identity (namespaces + scopes).
+[[auth.tokens]]
+name = "claude-code"
+secret = { env = "RZEM_MEMORY_TOKEN_CLAUDE_CODE" }
+agents = ["default"]
+scopes = ["memory:read", "memory:write", "memory:admin"]
+
+# A wildcard token spans every namespace on reads; captures need a concrete
+# agent, so list one before "*" if the token should also write.
+# [[auth.tokens]]
+# name = "admin"
+# secret = { file = "/etc/rzem-memory/admin.token" }
+# agents = ["*"]
+# scopes = ["memory:read", "memory:write", "memory:admin"]
+
+[auth.oauth]
+enabled = false
+# These two are placeholders. They are read even while oauth is disabled - the
+# RFC 9728 metadata document and the `resource_metadata` hint in every 401
+# challenge are built from them - so set them to your own values for any
+# internet-facing deployment. Enabling oauth while either is still the
+# placeholder below is a fatal config error rather than a silent connection to
+# a host you do not control.
+issuer = "https://id.example.com/realms/main"
+audience = "https://memory.example.com"
+# jwks_uri = "https://id.example.com/realms/main/protocol/openid-connect/certs"
+scope_claim = "scope"
+# The JWT claim carrying the agent namespace list for the caller.
+agents_claim = "memory_agents"

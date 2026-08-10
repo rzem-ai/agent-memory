@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.remember
+.secrets
+*.local.toml
+*.secret
+coverage/
+dist/
+mcp.toml
+node_modules/

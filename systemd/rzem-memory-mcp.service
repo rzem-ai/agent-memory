@@ -1,0 +1,41 @@
+[Unit]
+Description=rzem Memory MCP (v2)
+After=network-online.target postgresql.service
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=rzem-memory
+Group=rzem-memory
+WorkingDirectory=/srv/rzem-memory/current
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/rzem-memory/rzem-memory.env
+ExecStart=/usr/bin/node /srv/rzem-memory/current/dist/index.js --config /etc/rzem-memory/mcp.toml
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=35
+KillSignal=SIGTERM
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/etc/rzem-memory
+
+[Install]
+WantedBy=multi-user.target
