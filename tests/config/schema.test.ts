@@ -95,3 +95,24 @@ describe("oauth placeholders", () => {
     expect(result.data?.auth.oauth.enabled).toBe(true);
   });
 });
+
+describe("secret references", () => {
+  it("requires exactly one secret source", () => {
+    expect(parse({ database: { ...DATABASE, password: {} } }).success).toBe(false);
+    expect(
+      parse({
+        database: {
+          ...DATABASE,
+          password: { env: "DB_PASSWORD", file: "/run/secrets/db-password" },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts either an environment variable or a file", () => {
+    expect(parse({ database: { ...DATABASE, password: { env: "DB_PASSWORD" } } }).success).toBe(true);
+    expect(
+      parse({ database: { ...DATABASE, password: { file: "/run/secrets/db-password" } } }).success,
+    ).toBe(true);
+  });
+});

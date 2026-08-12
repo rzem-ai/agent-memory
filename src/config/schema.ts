@@ -28,8 +28,8 @@ export const SecretRefSchema = z
     file: z.string().min(1).optional(),
   })
   .strict()
-  .refine((ref) => ref.env || ref.file, {
-    message: "a secret ref needs 'env' or 'file'",
+  .refine((ref) => Number(ref.env !== undefined) + Number(ref.file !== undefined) === 1, {
+    message: "a secret ref needs exactly one of 'env' or 'file'",
   });
 
 export const ScopeSchema = z.enum(["memory:read", "memory:write", "memory:admin"]);
