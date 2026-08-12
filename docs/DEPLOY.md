@@ -2,6 +2,9 @@
 
 What the server needs, how to stand it up, and how to keep it running.
 
+For a container image or a complete Docker Compose stack, see
+[DOCKER.md](DOCKER.md).
+
 ## Infrastructure requirements
 
 | Component | Requirement | Notes |

@@ -33,3 +33,19 @@ jobs:
       # repositories are faked and the HTTP tests bind an ephemeral port, so
       # nothing here needs Postgres or Ollama.
       - run: npm run check
+
+  container:
+    name: container
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Validate Compose model
+        run: docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          RZEM_MEMORY_TOKEN: ci-placeholder
+
+      - name: Build application image
+        run: docker build --tag agent-memory:ci .

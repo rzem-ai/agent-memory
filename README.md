@@ -113,6 +113,8 @@ claude mcp add --transport stdio rzem-memory -- \
 ```
 
 Deployment behind a reverse proxy, systemd and OAuth: [docs/DEPLOY.md](docs/DEPLOY.md).
+Container deployment with a complete pgvector and Ollama stack:
+[docs/DOCKER.md](docs/DOCKER.md).
 
 ## How recall works
 
@@ -206,6 +208,8 @@ transport is included for local single-user use.
   identity model, wire behaviour, error taxonomy.
 - [docs/DEPLOY.md](docs/DEPLOY.md) — requirements, configuration, systemd,
   reverse proxy, smoke tests, operational notes.
+- [docs/DOCKER.md](docs/DOCKER.md) — standalone image and complete Docker
+  Compose deployment with PostgreSQL/pgvector and Ollama.
 - [migrations/README.md](migrations/README.md) — schema ownership and the
   adopt-don't-break migration rules.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — the invariants to know before changing
