@@ -1,5 +1,5 @@
 {
-  "name": "agent-memory",
+  "name": "@rzem-ai/agent-memory",
   "version": "1.0.0",
   "description": "Long-term memory for AI agents: an MCP server over Postgres + pgvector with cross-corpus semantic recall, self-deduplicating capture, and namespace isolation by credential.",
   "license": "MIT",
@@ -12,6 +12,9 @@
     "url": "https://github.com/rzem-ai/agent-memory/issues"
   },
   "homepage": "https://github.com/rzem-ai/agent-memory#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -28,6 +31,13 @@
     "node": ">=20"
   },
   "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "docs/",
+    "migrations/",
+    "skills/",
+    "mcp.example.toml"
+  ],
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -40,7 +50,8 @@
     "start:stdio": "node dist/stdio.js",
     "dev:http": "tsx src/index.ts",
     "dev:stdio": "tsx src/stdio.ts",
-    "migrate": "tsx src/cli/migrate.ts"
+    "migrate": "node dist/cli/migrate.js",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",

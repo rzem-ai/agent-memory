@@ -16,9 +16,7 @@ export function resolveSecret(
     if (value) return value;
   }
   if (reference.file) {
-    console.log('reference.file: ', reference.file)
     const value = readFileSync(reference.file, "utf8").trim();
-    console.log('reference.file: value: ', value)
     if (value) return value;
   }
   const source = reference.env ?? reference.file ?? "unknown";
