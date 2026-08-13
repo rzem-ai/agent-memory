@@ -1,0 +1,67 @@
+# Managed by OpenTofu — generated from terraform/stacks/agent-memory. Edits
+# here are overwritten on the next apply; change the stack variables instead.
+#
+# No secret values appear in this file. Every credential is a { file = "..." }
+# reference to a path uploaded separately, which is what keeps the rendered
+# config readable in `tofu plan` output.
+
+log_level = "${log_level}"
+
+[http]
+# Binds all interfaces *inside the container*; the host-side publish decides
+# who can reach it.
+host = "0.0.0.0"
+port = ${http_port}
+
+[database]
+host = "${db_host}"
+port = ${db_port}
+database = "${db_name}"
+user = "${db_user}"
+password = { file = "${db_password_file}" }
+max_connections = ${db_max_connections}
+
+[embeddings.thoughts]
+# 768-d. The width is asserted at query time; changing the model breaks recall.
+host = "${embeddings_host}"
+model = "${thoughts_model}"
+dimensions = ${thoughts_dimensions}
+
+[embeddings.documents]
+# 1024-d, a different vector space from the one above. Never mixed.
+host = "${embeddings_host}"
+model = "${documents_model}"
+dimensions = ${documents_dimensions}
+
+[search]
+default_mode = "${search_default_mode}"
+recency_decay_days = ${search_recency_decay_days}
+recency_floor = ${search_recency_floor}
+%{ if vault_dir != null ~}
+
+[vault]
+dir = "${vault_dir}"
+%{ endif ~}
+
+[auth]
+enabled = ${auth_enabled}
+%{ for client in clients ~}
+
+[[auth.tokens]]
+name = "${client.name}"
+secret = { file = "${client.secret_file}" }
+agents = ${client.agents_json}
+scopes = ${client.scopes_json}
+%{ endfor ~}
+
+[auth.oauth]
+enabled = ${oauth_enabled}
+%{ if oauth != null ~}
+issuer = "${oauth.issuer}"
+audience = "${oauth.audience}"
+%{ if oauth.jwks_uri != null ~}
+jwks_uri = "${oauth.jwks_uri}"
+%{ endif ~}
+scope_claim = "${oauth.scope_claim}"
+agents_claim = "${oauth.agents_claim}"
+%{ endif ~}

@@ -9,3 +9,17 @@ coverage/
 dist/
 mcp.toml
 node_modules/
+
+# OpenTofu / Terraform. The lock file is deliberately NOT ignored - it pins
+# provider versions and checksums, and belongs in version control.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+crash.log
+
+# Lock files belong to root modules only; reusable modules resolve providers
+# from whichever stack calls them. CI's per-module `init` creates these.
+terraform/modules/*/.terraform.lock.hcl

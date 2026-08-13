@@ -49,6 +49,11 @@ makes search quietly return nothing.
 - Logs go to fd 2 only; stdout belongs to the stdio protocol.
 - Zod 4: input-side defaults on nested objects are `.prefault({})`, not
   `.default({})`.
+- Deployment topology is described three times — `compose.yaml`, the systemd
+  unit, and `terraform/`. Changing the config shape, the ports or the
+  dependency wiring means changing all three that apply. CI formats and
+  validates the OpenTofu configuration (`tofu fmt -check`, `tofu validate`) but
+  cannot tell you the three have drifted apart.
 
 ## Reporting bugs
 
