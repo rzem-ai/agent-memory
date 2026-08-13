@@ -60,3 +60,39 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           format: table
+
+  opentofu:
+    name: opentofu
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # Installed from the release archive and pinned by checksum rather than
+      # through a marketplace action: one fewer third-party action in the
+      # supply chain, and the same pinning style as the Dockerfile's base image.
+      - name: Install OpenTofu
+        env:
+          TOFU_VERSION: '1.10.6'
+          TOFU_SHA256: 15b7bed76420b50da3e121769c43341df8cd57d751ca14e6dbe9c850124c6dac
+        run: |
+          curl -fsSL -o tofu.zip \
+            "https://github.com/opentofu/opentofu/releases/download/v${TOFU_VERSION}/tofu_${TOFU_VERSION}_linux_amd64.zip"
+          echo "${TOFU_SHA256}  tofu.zip" | sha256sum -c -
+          unzip -q tofu.zip tofu
+          sudo install -m 0755 tofu /usr/local/bin/tofu
+          tofu version
+
+      - name: Check formatting
+        run: tofu fmt -check -recursive terraform
+
+      # -backend=false: validation needs only the provider schemas, so this
+      # gate wants no state, no credentials and no Docker daemon.
+      - name: Validate modules and stack
+        run: |
+          for dir in terraform/modules/* terraform/stacks/*; do
+            echo "::group::${dir}"
+            tofu -chdir="${dir}" init -backend=false -input=false
+            tofu -chdir="${dir}" validate
+            echo "::endgroup::"
+          done
