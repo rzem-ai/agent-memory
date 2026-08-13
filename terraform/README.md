@@ -119,12 +119,30 @@ docker volume ls | grep agent-memory
 Set the names in `terraform.tfvars`:
 
 ```hcl
-postgres_volume_name   = "agent-memory_postgres-data"
-ollama_volume_name     = "agent-memory_ollama-data"
-client_token_overrides = {}   # or the current token, to avoid reconfiguring clients
+postgres_volume_name = "agent-memory_postgres-data"
+ollama_volume_name   = "agent-memory_ollama-data"
 ```
 
-Import them so OpenTofu adopts rather than creates:
+**Carry the existing credentials across.** This is the step that bites if you
+skip it. An adopted volume already holds an initialised cluster, and Postgres
+only ever reads `POSTGRES_PASSWORD_FILE` at `initdb` — so a freshly generated
+password would be one the database has never heard of, and the migrate job
+would fail to authenticate on the very first apply. Reuse what Compose was
+using, from the environment rather than from a file on disk:
+
+```bash
+export TF_VAR_database_password="$(cat .secrets/db-password)"
+export TF_VAR_client_token_overrides="{\"claude-code\":\"$(cat .secrets/memory-token)\"}"
+```
+
+Carrying the bearer token over is optional but worth it: clients keep working
+through the cutover instead of needing to be reconfigured. Keep
+`TF_VAR_database_password` set for the life of the deployment — dropping it
+later reintroduces exactly the same mismatch. To move to a generated password
+afterwards, follow
+[Rotating the database password](#rotating-the-database-password).
+
+Then import the volumes so OpenTofu adopts rather than creates:
 
 ```bash
 tofu import 'module.postgres.docker_volume.data' agent-memory_postgres-data

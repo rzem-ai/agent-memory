@@ -156,6 +156,10 @@ and the credentials do not appear in it in plaintext. For a team, swap the
 pbkdf2 passphrase for the OpenBao key provider (itself the MPL-licensed fork of
 Vault) and the whole chain stays open source.
 
+A saved plan file (`tofu plan -out=…`) holds the same values in cleartext and
+is *not* covered by state encryption — treat one like a state file, or do not
+save it. `.gitignore` covers `*.tfplan` for the obvious accident.
+
 If a secret must never enter state at all, put the file on the host out of band
 and mount it: `bind_mounts` instead of `secret_files`. That is the right answer
 for a credential you did not generate and cannot rotate, at the cost of
@@ -234,7 +238,9 @@ HCL cannot rot silently.
 
 **2 · Adopt the existing deployment.** Import the existing data volumes so
 OpenTofu takes over a running stack without recreating it, and carry the
-current bearer token across so clients need no reconfiguration. The volumes
+current credentials across — the database password because an initialised
+cluster will not accept a new one, the bearer token so clients need no
+reconfiguration during the cutover. The volumes
 carry `prevent_destroy`, so the rollback is a container-targeted destroy
 followed by `docker compose up -d`, with the data untouched. Procedure in
 [terraform/README.md](../terraform/README.md#adopting-an-existing-compose-deployment).
