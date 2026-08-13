@@ -33,3 +33,30 @@ jobs:
       # repositories are faked and the HTTP tests bind an ephemeral port, so
       # nothing here needs Postgres or Ollama.
       - run: npm run check
+
+  container:
+    name: container
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # Secrets are file-sourced, so the model resolves without them present.
+      - name: Validate Compose model
+        run: docker compose config --quiet
+
+      - name: Build application image
+        run: docker build --tag agent-memory:ci .
+
+      # The image ships no package manager and an Alpine base, so it scans
+      # clean today. A failure here normally means the base image pin in the
+      # Dockerfile needs bumping; genuinely unfixable findings go in
+      # .trivyignore with a dated justification.
+      - name: Scan application image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: agent-memory:ci
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          format: table

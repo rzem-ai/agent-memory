@@ -1,0 +1,42 @@
+# Configuration used by compose.yaml. Secret values are injected through the
+# environment and never stored in this file.
+log_level = "info"
+
+[http]
+host = "0.0.0.0"
+port = 3010
+
+[database]
+host = "postgres"
+port = 5432
+database = "memory"
+user = "agent_user"
+password = { file = "/run/secrets/db-password" }
+max_connections = 10
+
+[embeddings.thoughts]
+host = "http://ollama:11434"
+model = "nomic-embed-text"
+dimensions = 768
+
+[embeddings.documents]
+host = "http://ollama:11434"
+model = "bge-m3"
+dimensions = 1024
+
+[search]
+default_mode = "recency_weighted"
+recency_decay_days = 90
+recency_floor = 0.1
+
+[auth]
+enabled = true
+
+[[auth.tokens]]
+name = "docker-client"
+secret = { file = "/run/secrets/memory-token" }
+agents = ["default"]
+scopes = ["memory:read", "memory:write", "memory:admin"]
+
+[auth.oauth]
+enabled = false

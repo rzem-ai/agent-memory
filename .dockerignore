@@ -1,0 +1,15 @@
+.git
+.github
+.DS_Store
+.env
+.remember
+*.local.toml
+*.secret
+coverage
+dist
+docs
+node_modules
+tests
+mcp.toml
+docker-compose*.yml
+compose*.yaml

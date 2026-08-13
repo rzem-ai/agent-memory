@@ -51,6 +51,10 @@
     "dev:http": "tsx src/index.ts",
     "dev:stdio": "tsx src/stdio.ts",
     "migrate": "node dist/cli/migrate.js",
+    "docker:config": "docker compose config --quiet",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f memory",
     "prepack": "npm run build"
   },
   "dependencies": {

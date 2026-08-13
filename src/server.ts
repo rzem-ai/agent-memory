@@ -14,10 +14,10 @@ import type { AgentIdentity } from "./auth/identity.js";
 
 /**
  * The name clients see in serverInfo, and the name their tool namespace is
- * built from (`mcp__rzem-memory__*`). Changing it breaks every configured
+ * built from (`mcp__agent-memory__*`). Changing it breaks every configured
  * client, so it is deliberately not derived from the package name.
  */
-export const SERVER_NAME = "rzem-memory";
+export const SERVER_NAME = "agent-memory";
 
 /**
  * Read rather than imported: `rootDir` is ./src, so a static JSON import of a

@@ -7,7 +7,7 @@ it searches comes back ranked by a blend of semantic similarity, freshness and
 quality.
 
 > The repository is `agent-memory`; the server identifies itself to MCP clients
-> as `rzem-memory`, which is why the config paths, environment variables and
+> as `agent-memory`, which is why the config paths, environment variables and
 > client alias below use that name.
 
 ## What it stores
@@ -98,21 +98,23 @@ npm run start:stdio            # local stdio, no auth
 Register it with Claude Code:
 
 ```bash
-claude mcp add --transport http rzem-memory http://127.0.0.1:3010/mcp \
-  --header "Authorization: Bearer $RZEM_MEMORY_TOKEN"
+claude mcp add --transport http agent-memory http://127.0.0.1:3010/mcp \
+  --header "Authorization: Bearer $AGENT_MEMORY_TOKEN"
 ```
 
-The nine tools then appear as `mcp__rzem-memory__*`. The token decides which
+The nine tools then appear as `mcp__agent-memory__*`. The token decides which
 namespace you read and write — there is nothing further to configure. For a
 single-user setup on the machine running the server, skip HTTP and auth
 entirely:
 
 ```bash
-claude mcp add --transport stdio rzem-memory -- \
+claude mcp add --transport stdio agent-memory -- \
   node /path/to/agent-memory/dist/stdio.js --config /path/to/mcp.toml
 ```
 
 Deployment behind a reverse proxy, systemd and OAuth: [docs/DEPLOY.md](docs/DEPLOY.md).
+Container deployment with a complete pgvector and Ollama stack:
+[docs/DOCKER.md](docs/DOCKER.md).
 
 ## How recall works
 
@@ -206,6 +208,8 @@ transport is included for local single-user use.
   identity model, wire behaviour, error taxonomy.
 - [docs/DEPLOY.md](docs/DEPLOY.md) — requirements, configuration, systemd,
   reverse proxy, smoke tests, operational notes.
+- [docs/DOCKER.md](docs/DOCKER.md) — standalone image and complete Docker
+  Compose deployment with PostgreSQL/pgvector and Ollama.
 - [migrations/README.md](migrations/README.md) — schema ownership and the
   adopt-don't-break migration rules.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — the invariants to know before changing

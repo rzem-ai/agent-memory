@@ -4,7 +4,7 @@
  * source of truth for their shapes.
  *
  * Semantics:
- * - A tracking table (rzem_memory_migrations) records applied file names.
+ * - A tracking table (agent_memory_migrations) records applied file names.
  * - Files apply in name order; already-recorded names are skipped.
  * - Each file runs in ONE transaction together with its tracking insert, so a
  *   half-applied migration cannot be recorded (and the idempotent DDL style
@@ -17,7 +17,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import type { MemoryQuery } from "./pool.js";
 
-const TRACKING_TABLE = "rzem_memory_migrations";
+const TRACKING_TABLE = "agent_memory_migrations";
 
 export interface MigrationFile {
   name: string;

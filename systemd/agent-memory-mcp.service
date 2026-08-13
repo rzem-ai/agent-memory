@@ -7,12 +7,12 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-User=rzem-memory
-Group=rzem-memory
-WorkingDirectory=/srv/rzem-memory/current
+User=agent-memory
+Group=agent-memory
+WorkingDirectory=/srv/agent-memory/current
 Environment=NODE_ENV=production
-EnvironmentFile=/etc/rzem-memory/rzem-memory.env
-ExecStart=/usr/bin/node /srv/rzem-memory/current/dist/index.js --config /etc/rzem-memory/mcp.toml
+EnvironmentFile=/etc/agent-memory/agent-memory.env
+ExecStart=/usr/bin/node /srv/agent-memory/current/dist/index.js --config /etc/agent-memory/mcp.toml
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=35
@@ -35,7 +35,7 @@ SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
 AmbientCapabilities=
-ReadOnlyPaths=/etc/rzem-memory
+ReadOnlyPaths=/etc/agent-memory
 
 [Install]
 WantedBy=multi-user.target

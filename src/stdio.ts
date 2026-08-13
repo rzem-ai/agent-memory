@@ -38,7 +38,7 @@ serveStdio(() => createServer(wired.serverDeps, identity), {
   onerror: (error) => log.warn({ err: error.message }, "stdio serving error"),
 });
 
-log.info({ agent: agentId }, "rzem-memory stdio server ready");
+log.info({ agent: agentId }, "agent-memory stdio server ready");
 
 process.on("SIGINT", () => {
   void wired.close().finally(() => process.exit(0));

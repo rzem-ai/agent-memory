@@ -17,7 +17,7 @@ memory Postgres.
 - **Vault timestamps are ISO text**, cast to `timestamptz` on both sides of
   comparisons; `memory_thoughts` uses real timestamptz. The tree node's window
   column is `time_window` (property `window`).
-- **The text output shapes are a frozen contract** - the rzem-memory plugin's
+- **The text output shapes are a frozen contract** - the agent-memory plugin's
   hooks grep them. Change formatters only with the plugin in the same commit.
 
 ## Commands
