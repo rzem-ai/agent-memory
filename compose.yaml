@@ -93,8 +93,11 @@ volumes:
   postgres-data:
   ollama-data:
 
+# File-sourced, not environment-sourced: Compose can only inject a secret into
+# a `read_only: true` service by bind-mounting it from the host, and `memory`
+# is read-only. `.secrets/` is git-ignored; see docs/DOCKER.md.
 secrets:
   db-password:
-    environment: POSTGRES_PASSWORD
+    file: ./.secrets/db-password
   memory-token:
-    environment: AGENT_MEMORY_TOKEN
+    file: ./.secrets/memory-token

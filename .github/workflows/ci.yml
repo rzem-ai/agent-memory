@@ -41,11 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # Secrets are file-sourced, so the model resolves without them present.
       - name: Validate Compose model
         run: docker compose config --quiet
-        env:
-          POSTGRES_PASSWORD: ci-placeholder
-          AGENT_MEMORY_TOKEN: ci-placeholder
 
       - name: Build application image
         run: docker build --tag agent-memory:ci .

@@ -16,15 +16,18 @@ The default stack starts:
 - `migrate`: a one-shot schema migration job;
 - `memory`: the authenticated MCP HTTP server.
 
-Create local credentials first:
+Create local credentials first. Both live as files under `.secrets/`, which is
+git-ignored:
 
 ```bash
 cp .env.docker.example .env
-openssl rand -hex 32  # use this for POSTGRES_PASSWORD
-openssl rand -hex 32  # use this for AGENT_MEMORY_TOKEN
+mkdir -p .secrets && chmod 700 .secrets
+openssl rand -hex 32 > .secrets/db-password
+openssl rand -hex 32 > .secrets/memory-token
 ```
 
-Replace both placeholder values in `.env`, then start the stack:
+`.env` holds only non-secret settings (bind address, port, image). Then start
+the stack:
 
 ```bash
 docker compose config --quiet
@@ -33,9 +36,19 @@ docker compose ps
 docker compose logs -f memory
 ```
 
-Compose presents these values to the containers as read-only files under
+Compose bind-mounts these files into the containers as read-only files under
 `/run/secrets`; they are not copied into the image or exposed as container
-environment variables.
+environment variables. The files must be file-sourced rather than
+environment-sourced because Compose can only inject a secret into a
+`read_only: true` service by bind-mounting it, and `memory` is read-only.
+
+If a `docker compose up` fails part-way, it can leave a `memory` container
+that was created without its secrets, and a later `up` will reuse it. Recreate
+it rather than debugging the `ENOENT /run/secrets/...` crash loop:
+
+```bash
+docker compose up -d --force-recreate memory
+```
 
 The first run downloads two embedding models and can take several minutes.
 Subsequent runs reuse the `ollama-data` volume. The server is published on
@@ -46,7 +59,7 @@ curl --fail http://127.0.0.1:3010/health
 ```
 
 Configure an MCP client with `http://127.0.0.1:3010/mcp` and the bearer token
-from `AGENT_MEMORY_TOKEN`.
+from `.secrets/memory-token`.
 
 To stop the containers without deleting data:
 
