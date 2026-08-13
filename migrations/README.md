@@ -18,7 +18,7 @@ run against the live database **adopts** it: existing relations are untouched,
 missing ones are filled in (on the live database that means
 `memory_match_thoughts()` and `agent_state`, which were absent). Fresh
 databases get everything. Applied files are recorded in
-`rzem_memory_migrations`, each file committing atomically with its record.
+`agent_memory_migrations`, each file committing atomically with its record.
 
 ## Rules
 

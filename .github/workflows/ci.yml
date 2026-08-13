@@ -45,7 +45,20 @@ jobs:
         run: docker compose config --quiet
         env:
           POSTGRES_PASSWORD: ci-placeholder
-          RZEM_MEMORY_TOKEN: ci-placeholder
+          AGENT_MEMORY_TOKEN: ci-placeholder
 
       - name: Build application image
         run: docker build --tag agent-memory:ci .
+
+      # The image ships no package manager and an Alpine base, so it scans
+      # clean today. A failure here normally means the base image pin in the
+      # Dockerfile needs bumping; genuinely unfixable findings go in
+      # .trivyignore with a dated justification.
+      - name: Scan application image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: agent-memory:ci
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          format: table

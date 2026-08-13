@@ -21,7 +21,7 @@ port = 5432
 # wrong database is silent - every search simply returns nothing.
 database = "memory"
 user = "agent_user"
-password = { env = "RZEM_MEMORY_DB_PASSWORD" }
+password = { env = "AGENT_MEMORY_DB_PASSWORD" }
 
 [embeddings.thoughts]
 # 768-d nomic - the conversational corpus space. Dimension is load-bearing.
@@ -51,7 +51,7 @@ enabled = true
 # Static bearer tokens: each maps a secret to an identity (namespaces + scopes).
 [[auth.tokens]]
 name = "claude-code"
-secret = { env = "RZEM_MEMORY_TOKEN_CLAUDE_CODE" }
+secret = { env = "AGENT_MEMORY_TOKEN_CLAUDE_CODE" }
 agents = ["default"]
 scopes = ["memory:read", "memory:write", "memory:admin"]
 
@@ -59,7 +59,7 @@ scopes = ["memory:read", "memory:write", "memory:admin"]
 # agent, so list one before "*" if the token should also write.
 # [[auth.tokens]]
 # name = "admin"
-# secret = { file = "/etc/rzem-memory/admin.token" }
+# secret = { file = "/etc/agent-memory/admin.token" }
 # agents = ["*"]
 # scopes = ["memory:read", "memory:write", "memory:admin"]
 

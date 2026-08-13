@@ -28,7 +28,7 @@ truth for both corpora; apply it before first start:
 
 ```bash
 npm run migrate                     # uses mcp.toml's [database] block
-npm run migrate -- --config /etc/rzem-memory/mcp.admin.toml   # or an admin variant
+npm run migrate -- --config /etc/agent-memory/mcp.admin.toml   # or an admin variant
 ```
 
 Every migration is idempotent (`IF NOT EXISTS` / `OR REPLACE`), so the runner
@@ -36,7 +36,7 @@ Every migration is idempotent (`IF NOT EXISTS` / `OR REPLACE`), so the runner
 changing no rows) and fully creates a fresh one - including the pgvector
 extension, all indexes, the `memory_thoughts` touch trigger and the
 `memory_match_thoughts()` helper function. Applied files are tracked in
-`rzem_memory_migrations`.
+`agent_memory_migrations`.
 
 Two roles are the clean shape:
 
@@ -51,7 +51,7 @@ Verify after migrating:
 
 ```bash
 psql -h DB_HOST -U DB_USER -d DB_NAME -c "\dt memory_*"
-psql -h DB_HOST -U DB_USER -d DB_NAME -c "SELECT name, applied_at FROM rzem_memory_migrations;"
+psql -h DB_HOST -U DB_USER -d DB_NAME -c "SELECT name, applied_at FROM agent_memory_migrations;"
 ```
 
 ### Ollama models
@@ -73,7 +73,7 @@ All configuration is one TOML file, validated strictly at boot - an unknown
 key is a fatal error, not a silent ignore. Start from the checked-in example:
 
 ```bash
-cp mcp.example.toml /etc/rzem-memory/mcp.toml
+cp mcp.example.toml /etc/agent-memory/mcp.toml
 ```
 
 Secrets never go in the TOML. Every credential field is a reference -
@@ -93,7 +93,7 @@ host = "db-host"
 port = 5432
 database = "memory"          # required; no default
 user = "agent_user"
-password = { env = "RZEM_MEMORY_DB_PASSWORD" }
+password = { env = "AGENT_MEMORY_DB_PASSWORD" }
 
 [embeddings.thoughts]
 host = "http://127.0.0.1:11434"
@@ -110,7 +110,7 @@ enabled = true
 
 [[auth.tokens]]
 name   = "claude-code"
-secret = { env = "RZEM_MEMORY_TOKEN_CLAUDE_CODE" }
+secret = { env = "AGENT_MEMORY_TOKEN_CLAUDE_CODE" }
 agents = ["default"]
 scopes = ["memory:read", "memory:write", "memory:admin"]
 ```
@@ -140,29 +140,29 @@ Optional blocks:
 
 ```bash
 # 1. user + directories
-sudo useradd --system --home /srv/rzem-memory --shell /usr/sbin/nologin rzem-memory
-sudo mkdir -p /srv/rzem-memory /etc/rzem-memory
+sudo useradd --system --home /srv/agent-memory --shell /usr/sbin/nologin agent-memory
+sudo mkdir -p /srv/agent-memory /etc/agent-memory
 
 # 2. code
-sudo git clone <repo-url> /srv/rzem-memory/current
-cd /srv/rzem-memory/current
+sudo git clone <repo-url> /srv/agent-memory/current
+cd /srv/agent-memory/current
 sudo npm install
 sudo npm run build        # or: npm run check, to gate on lint+tests too
-sudo npm run migrate -- --config /etc/rzem-memory/mcp.toml   # see database section
+sudo npm run migrate -- --config /etc/agent-memory/mcp.toml   # see database section
 
 # 3. config + secrets
-sudo cp mcp.example.toml /etc/rzem-memory/mcp.toml   # edit
-sudo tee /etc/rzem-memory/rzem-memory.env >/dev/null <<'EOF'
-RZEM_MEMORY_DB_PASSWORD=...
-RZEM_MEMORY_TOKEN_CLAUDE_CODE=...
+sudo cp mcp.example.toml /etc/agent-memory/mcp.toml   # edit
+sudo tee /etc/agent-memory/agent-memory.env >/dev/null <<'EOF'
+AGENT_MEMORY_DB_PASSWORD=...
+AGENT_MEMORY_TOKEN_CLAUDE_CODE=...
 EOF
-sudo chmod 600 /etc/rzem-memory/rzem-memory.env
-sudo chown -R rzem-memory:rzem-memory /srv/rzem-memory /etc/rzem-memory
+sudo chmod 600 /etc/agent-memory/agent-memory.env
+sudo chown -R agent-memory:agent-memory /srv/agent-memory /etc/agent-memory
 
 # 4. service
-sudo cp systemd/rzem-memory-mcp.service /etc/systemd/system/
+sudo cp systemd/agent-memory-mcp.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now rzem-memory-mcp
+sudo systemctl enable --now agent-memory-mcp
 ```
 
 The shipped unit is hardened: dedicated user, `ProtectSystem=strict`,
@@ -173,7 +173,7 @@ server only ever reads the vault).
 Logs are JSON lines on stderr, so:
 
 ```bash
-journalctl -u rzem-memory-mcp -f
+journalctl -u agent-memory-mcp -f
 ```
 
 ## Reverse proxy (nginx)
@@ -228,10 +228,10 @@ Per-project registration, as an alternative to `claude mcp add`:
 ```json
 {
   "mcpServers": {
-    "rzem-memory": {
+    "agent-memory": {
       "type": "http",
       "url": "https://your-host/memory/mcp",
-      "headers": { "Authorization": "Bearer ${RZEM_MEMORY_TOKEN}" }
+      "headers": { "Authorization": "Bearer ${AGENT_MEMORY_TOKEN}" }
     }
   }
 }
@@ -245,7 +245,7 @@ rest through `/.well-known/oauth-protected-resource`.
 ## Updates
 
 ```bash
-sudo -u rzem-memory /srv/rzem-memory/current/scripts/update.sh
+sudo -u agent-memory /srv/agent-memory/current/scripts/update.sh
 ```
 
 (git fetch/pull, `npm install`, build, restart the unit.)

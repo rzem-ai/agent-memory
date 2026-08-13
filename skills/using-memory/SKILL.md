@@ -1,9 +1,9 @@
 ---
 name: using-memory
-description: Use when deciding whether to store or recall long-term memory via the rzem-memory MCP server, when the user says remember, recall, forget, or "what did we decide", when search results carry corpus/taint labels, or when a memory tool call fails with unknown tool or missing agent_id.
+description: Use when deciding whether to store or recall long-term memory via the agent-memory MCP server, when the user says remember, recall, forget, or "what did we decide", when search results carry corpus/taint labels, or when a memory tool call fails with unknown tool or missing agent_id.
 ---
 
-# Using the rzem-memory system
+# Using the agent-memory system
 
 Persistent long-term memory over two corpora, one search surface. **The
 credential decides whose memory you touch - no tool takes an agent

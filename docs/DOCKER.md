@@ -21,7 +21,7 @@ Create local credentials first:
 ```bash
 cp .env.docker.example .env
 openssl rand -hex 32  # use this for POSTGRES_PASSWORD
-openssl rand -hex 32  # use this for RZEM_MEMORY_TOKEN
+openssl rand -hex 32  # use this for AGENT_MEMORY_TOKEN
 ```
 
 Replace both placeholder values in `.env`, then start the stack:
@@ -46,7 +46,7 @@ curl --fail http://127.0.0.1:3010/health
 ```
 
 Configure an MCP client with `http://127.0.0.1:3010/mcp` and the bearer token
-from `RZEM_MEMORY_TOKEN`.
+from `AGENT_MEMORY_TOKEN`.
 
 To stop the containers without deleting data:
 
@@ -65,7 +65,7 @@ volume has been backed up.
 
 ### Binding beyond localhost
 
-Set `RZEM_MEMORY_BIND=0.0.0.0` only when the host firewall or a TLS reverse
+Set `AGENT_MEMORY_BIND=0.0.0.0` only when the host firewall or a TLS reverse
 proxy controls access. HTTP authentication is enabled in the Compose config,
 but bearer tokens still require TLS when traffic leaves the machine.
 
@@ -116,11 +116,11 @@ extension:
 ```bash
 docker run --rm \
   --network your-network \
-  -v "$PWD/mcp.docker.toml:/etc/rzem-memory/mcp.toml:ro" \
-  -e RZEM_MEMORY_DB_PASSWORD \
+  -v "$PWD/mcp.docker.toml:/etc/agent-memory/mcp.toml:ro" \
+  -e AGENT_MEMORY_DB_PASSWORD \
   --entrypoint node \
   agent-memory:local \
-  dist/cli/migrate.js --config /etc/rzem-memory/mcp.toml
+  dist/cli/migrate.js --config /etc/agent-memory/mcp.toml
 ```
 
 Run the server with the less-privileged serving credential:
@@ -132,9 +132,9 @@ docker run -d --name agent-memory \
   --security-opt no-new-privileges --cap-drop ALL \
   --network your-network \
   -p 127.0.0.1:3010:3010 \
-  -v "$PWD/mcp.docker.toml:/etc/rzem-memory/mcp.toml:ro" \
-  -e RZEM_MEMORY_DB_PASSWORD \
-  -e RZEM_MEMORY_TOKEN \
+  -v "$PWD/mcp.docker.toml:/etc/agent-memory/mcp.toml:ro" \
+  -e AGENT_MEMORY_DB_PASSWORD \
+  -e AGENT_MEMORY_TOKEN \
   agent-memory:local
 ```
 
@@ -144,10 +144,15 @@ Ollama process runs directly on the host.
 
 ## Image contract
 
+- Built on Alpine from a digest-pinned `node:24` base, and scanned in CI: the
+  build fails on any CRITICAL or HIGH finding.
+- Ships no package manager. `npm`, `npx`, `yarn`, and `corepack` are removed
+  from the runtime stage, so nothing in a running container can install code —
+  production modules are installed at build time and copied in.
 - Runs as the unprivileged `node` user.
 - Listens on container port `3010` when the mounted config uses
   `[http].host = "0.0.0.0"`.
-- Reads `/etc/rzem-memory/mcp.toml` by default.
+- Reads `/etc/agent-memory/mcp.toml` by default.
 - Exposes `/health` through an image-level health check.
 - Writes logs as JSON lines to stderr.
 - Writes no application data to the container filesystem.

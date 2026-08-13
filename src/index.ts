@@ -11,7 +11,7 @@ import { buildHttpServer } from "./http.js";
 
 const config = loadConfig();
 const log = createLogger(config.log_level);
-log.info({ config: redactedConfig(config) }, "starting rzem-memory http server");
+log.info({ config: redactedConfig(config) }, "starting agent-memory http server");
 
 if (!config.auth.enabled) {
   log.warn("AUTH IS DISABLED - every request is anonymous with full scopes. Development only.");
@@ -22,7 +22,7 @@ const wired = buildDeps(config, log);
 const server = buildHttpServer({ config, authenticator, serverDeps: wired.serverDeps, log });
 
 server.listen(config.http.port, config.http.host, () => {
-  log.info({ host: config.http.host, port: config.http.port }, "rzem-memory http server listening");
+  log.info({ host: config.http.host, port: config.http.port }, "agent-memory http server listening");
 });
 
 async function shutdown(signal: string): Promise<void> {

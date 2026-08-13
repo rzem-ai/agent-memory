@@ -54,9 +54,9 @@ services:
     secrets:
       - db-password
     volumes:
-      - ./docker/mcp.compose.toml:/etc/rzem-memory/mcp.toml:ro
+      - ./docker/mcp.compose.toml:/etc/agent-memory/mcp.toml:ro
     entrypoint: ["node", "dist/cli/migrate.js"]
-    command: ["--config", "/etc/rzem-memory/mcp.toml"]
+    command: ["--config", "/etc/agent-memory/mcp.toml"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,9 +73,9 @@ services:
       - db-password
       - memory-token
     volumes:
-      - ./docker/mcp.compose.toml:/etc/rzem-memory/mcp.toml:ro
+      - ./docker/mcp.compose.toml:/etc/agent-memory/mcp.toml:ro
     ports:
-      - "${RZEM_MEMORY_BIND:-127.0.0.1}:${RZEM_MEMORY_PORT:-3010}:3010"
+      - "${AGENT_MEMORY_BIND:-127.0.0.1}:${AGENT_MEMORY_PORT:-3010}:3010"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -97,4 +97,4 @@ secrets:
   db-password:
     environment: POSTGRES_PASSWORD
   memory-token:
-    environment: RZEM_MEMORY_TOKEN
+    environment: AGENT_MEMORY_TOKEN

@@ -39,7 +39,7 @@ describe("applyMigrations", () => {
     expect(calls.slice(first, first + 4)).toEqual([
       "BEGIN",
       "CREATE TABLE IF NOT",
-      "INSERT INTO rzem_memory_migrations (name)",
+      "INSERT INTO agent_memory_migrations (name)",
       "COMMIT",
     ]);
   });
@@ -52,7 +52,9 @@ describe("applyMigrations", () => {
   });
 
   it("rolls back and stops on a failing migration", async () => {
-    const { query, calls } = fakeSession({ failOn: "TABLE IF NOT EXISTS a" });
+    // Must not also match the tracking table's own CREATE TABLE IF NOT EXISTS
+    // agent_memory_migrations, which runs outside the per-file transaction.
+    const { query, calls } = fakeSession({ failOn: "EXISTS a (id int)" });
     await expect(applyMigrations(query, FILES)).rejects.toThrow(/0001_a\.sql failed/);
     expect(calls).toContain("ROLLBACK");
     // The second file must not have been attempted.

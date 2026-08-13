@@ -1,6 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-bookworm-slim AS build
+# Alpine, not Debian: bookworm and trixie both carry ~20 CRITICAL/HIGH OS CVEs
+# that Debian will not or cannot fix (zlib CVE-2023-45853, perl, util-linux);
+# this base carries none. The production dependency tree is pure JavaScript, so
+# musl costs nothing. Pinned by digest - the CI scan gate says when to bump it.
+ARG NODE_IMAGE=node:24.19-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+
+FROM ${NODE_IMAGE} AS deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
+FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -11,15 +23,22 @@ COPY scripts/ ./scripts/
 COPY src/ ./src/
 RUN npm run build
 
-FROM node:24-bookworm-slim AS runtime
+FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts \
-    && npm cache clean --force
+# Nothing at runtime shells out to a package manager, and npm's own bundled
+# dependencies (tar, undici, brace-expansion, ip-address) are otherwise the
+# only remaining source of CVEs in the image. Production modules are installed
+# in the `deps` stage and copied in below.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-v*
 
+COPY --from=deps /app/node_modules/ ./node_modules/
 COPY --from=build /app/dist/ ./dist/
+# Read at runtime for the served server version (src/server.ts).
+COPY package.json ./
 COPY migrations/ ./migrations/
 
 USER node
@@ -29,4 +48,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3010/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 
 ENTRYPOINT ["node", "dist/index.js"]
-CMD ["--config", "/etc/rzem-memory/mcp.toml"]
+CMD ["--config", "/etc/agent-memory/mcp.toml"]
