@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { HEARTBEAT_MS, createMesh, inertMesh } from "../../src/observability/mesh.js";
+import { FAREWELL_GRACE_MS, HEARTBEAT_MS, createMesh, inertMesh } from "../../src/observability/mesh.js";
 import type { MeshIdentity } from "../../src/observability/mesh.js";
 
 const identity: MeshIdentity = { pid: 4242, startedAt: "2026-08-30T00:00:00.000Z", peers: [] };
@@ -31,7 +31,7 @@ describe("createMesh", () => {
     expect(() => {
       inertMesh.emit(event);
       inertMesh.announce({ kind: "repl" });
-      inertMesh.farewell();
+      void inertMesh.farewell();
     }).not.toThrow();
   });
 
@@ -52,8 +52,7 @@ describe("createMesh", () => {
     const mesh = createMesh({ url: "http://hub", name: "memory", token: "s3cret" }, identity, { fetchImpl, heartbeatMs: 60_000 });
     mesh.emit(event);
     mesh.announce({ kind: "mcp-stdio" });
-    mesh.farewell();
-    await tick();
+    await mesh.farewell();
     expect(posts).toHaveLength(3);
     for (const post of posts) expect(post.headers.authorization).toBe("Bearer s3cret");
   });
@@ -75,8 +74,7 @@ describe("createMesh", () => {
     const { posts, fetchImpl } = recorder();
     const mesh = createMesh({ url: "http://hub", name: "memory", role: "memory · pg" }, identity, { fetchImpl, heartbeatMs: 60_000 });
     mesh.announce({ kind: "mcp-http", url: "http://127.0.0.1:3010/mcp" });
-    await tick();
-    mesh.farewell();
+    await mesh.farewell();
     expect(posts[0]?.body.type).toBe("agent.hello");
     expect(posts[0]?.body.payload).toEqual({
       name: "memory",
@@ -93,9 +91,8 @@ describe("createMesh", () => {
     const mesh = createMesh({ url: "http://hub", name: "memory" }, identity, { fetchImpl, heartbeatMs: 5 });
     mesh.announce({ kind: "mcp-stdio" });
     await new Promise((resolve) => setTimeout(resolve, 30));
-    mesh.farewell();
-    mesh.farewell();
-    await tick();
+    await mesh.farewell();
+    await mesh.farewell();
     const hellos = posts.filter((p) => p.body.type === "agent.hello").length;
     expect(hellos).toBeGreaterThanOrEqual(3);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -107,5 +104,24 @@ describe("createMesh", () => {
 
   it("defaults to a 15 s heartbeat", () => {
     expect(HEARTBEAT_MS).toBe(15_000);
+  });
+});
+
+describe("farewell timing", () => {
+  it("resolves once the bye has been posted", async () => {
+    const { posts, fetchImpl } = recorder();
+    const mesh = createMesh({ url: "http://hub", name: "memory" }, identity, { fetchImpl });
+    await mesh.farewell();
+    expect(posts.map((p) => p.body.type)).toEqual(["agent.bye"]);
+  });
+
+  it("gives up after the grace period when the hub never answers, without rejecting", async () => {
+    const never = (): Promise<Response> => new Promise(() => undefined);
+    const mesh = createMesh({ url: "http://hub", name: "memory" }, identity, { fetchImpl: never });
+    const started = performance.now();
+    await expect(mesh.farewell()).resolves.toBeUndefined();
+    const elapsed = performance.now() - started;
+    expect(elapsed).toBeGreaterThanOrEqual(FAREWELL_GRACE_MS - 20);
+    expect(elapsed).toBeLessThan(FAREWELL_GRACE_MS + 500);
   });
 });

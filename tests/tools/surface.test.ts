@@ -156,7 +156,7 @@ function recordingMesh(): Mesh & { events: MeshEvent[] } {
       events.push({ ...event, agent: "memory", id: `e${events.length}`, ts: new Date().toISOString() });
     },
     announce: () => undefined,
-    farewell: () => undefined,
+    farewell: () => Promise.resolve(),
   };
 }
 

@@ -64,11 +64,12 @@ export function buildDeps(config: AppConfig, log: Logger): Wired {
   return {
     serverDeps: { thoughts, kv, vault, search, log, mesh },
     mesh,
-    close: () => {
-      // First, and synchronous: the bye is fire-and-forget, so the sooner it
-      // is handed to fetch the better its odds of leaving before the process.
-      mesh.farewell();
-      return db.close();
+    close: async () => {
+      // First: the entrypoints exit right after close() resolves, and a bye
+      // that has not left the process by then is lost. farewell() waits for
+      // it, bounded, and never rejects.
+      await mesh.farewell();
+      await db.close();
     },
   };
 }

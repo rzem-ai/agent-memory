@@ -28,8 +28,13 @@ export interface Mesh {
    * timer.
    */
   announce(surface: SurfaceInfo): void;
-  /** Emits `agent.bye` and stops the heartbeat. Idempotent. */
-  farewell(): void;
+  /**
+   * Emits `agent.bye` and stops the heartbeat. Idempotent. Resolves once the
+   * post has settled or after a short grace, whichever is first - a process
+   * that exits the instant it calls this would otherwise take the bye down
+   * with it. Never rejects.
+   */
+  farewell(): Promise<void>;
 }
 
 export interface MeshConfig {
@@ -57,12 +62,14 @@ export interface MeshOptions {
 }
 
 export const HEARTBEAT_MS = 15_000;
+/** How long `farewell` waits for the bye to leave before letting shutdown continue. */
+export const FAREWELL_GRACE_MS = 250;
 
 /** Shared, frozen: the no-op every unconfigured server gets. */
 export const inertMesh: Mesh = Object.freeze({
   emit: () => undefined,
   announce: () => undefined,
-  farewell: () => undefined,
+  farewell: () => Promise.resolve(),
 });
 
 export function createMesh(cfg: MeshConfig | undefined, identity: MeshIdentity, opts: MeshOptions = {}): Mesh {
@@ -74,21 +81,26 @@ export function createMesh(cfg: MeshConfig | undefined, identity: MeshIdentity, 
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (cfg.token) headers.authorization = `Bearer ${cfg.token}`;
 
-  const post = (event: Omit<MeshEventInput, "agent">): void => {
+  /** Posts and returns a promise that settles when the post does; it never rejects. */
+  const post = (event: Omit<MeshEventInput, "agent">): Promise<void> => {
     const full: MeshEvent = { ...event, agent, id: randomUUID(), ts: new Date().toISOString() };
     // try/catch as well as .catch: a fetch implementation is free to throw
-    // synchronously, and that would escape a bare `void fetch(...).catch()`.
+    // synchronously, and that would escape a bare `fetch(...).catch()`.
     try {
-      void fetchImpl(endpoint, {
+      return fetchImpl(endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify(full),
         signal: AbortSignal.timeout(2000),
-      }).catch((error: unknown) => {
-        opts.log?.debug({ err: error instanceof Error ? error.message : String(error) }, "mesh post failed");
-      });
+      }).then(
+        () => undefined,
+        (error: unknown) => {
+          opts.log?.debug({ err: error instanceof Error ? error.message : String(error) }, "mesh post failed");
+        },
+      );
     } catch {
       /* telemetry must never surface an error into a memory call */
+      return Promise.resolve();
     }
   };
 
@@ -105,11 +117,13 @@ export function createMesh(cfg: MeshConfig | undefined, identity: MeshIdentity, 
       peers: identity.peers,
       surfaces: [...surfaces],
     };
-    post({ correlationId: "", taskId: "", type: "agent.hello", payload: payload as unknown as Record<string, unknown> });
+    void post({ correlationId: "", taskId: "", type: "agent.hello", payload: payload as unknown as Record<string, unknown> });
   };
 
   return {
-    emit: post,
+    emit: (event) => {
+      void post(event);
+    },
     announce(surface) {
       if (gone) return;
       surfaces.push(surface);
@@ -121,11 +135,13 @@ export function createMesh(cfg: MeshConfig | undefined, identity: MeshIdentity, 
       }
     },
     farewell() {
-      if (gone) return;
+      if (gone) return Promise.resolve();
       gone = true;
       if (timer) clearInterval(timer);
       timer = undefined;
-      post({ correlationId: "", taskId: "", type: "agent.bye", payload: { name: agent, reason: "shutdown" } });
+      const sent = post({ correlationId: "", taskId: "", type: "agent.bye", payload: { name: agent, reason: "shutdown" } });
+      const grace = new Promise<void>((resolve) => setTimeout(resolve, FAREWELL_GRACE_MS).unref());
+      return Promise.race([sent, grace]);
     },
   };
 }
