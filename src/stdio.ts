@@ -33,6 +33,22 @@ const identity = {
   scopes: [...SCOPES] as Scope[],
 };
 
+let stopping = false;
+function shutdown(reason: string): void {
+  if (stopping) return;
+  stopping = true;
+  log.info({ reason }, "shutting down");
+  void wired.close().finally(() => process.exit(0));
+}
+
+// An MCP host stops a stdio child by closing the pipe, not by signalling it,
+// so EOF on stdin is the normal way this process ends. Registered before
+// serveStdio takes stdin, so the goodbye goes out ahead of whatever the SDK
+// does on close.
+process.stdin.once("end", () => shutdown("stdin closed"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
 serveStdio(() => createServer(wired.serverDeps, identity), {
   legacy: "serve",
   onerror: (error) => log.warn({ err: error.message }, "stdio serving error"),
@@ -40,10 +56,3 @@ serveStdio(() => createServer(wired.serverDeps, identity), {
 
 log.info({ agent: agentId }, "agent-memory stdio server ready");
 wired.mesh.announce({ kind: "mcp-stdio" });
-
-process.on("SIGINT", () => {
-  void wired.close().finally(() => process.exit(0));
-});
-process.on("SIGTERM", () => {
-  void wired.close().finally(() => process.exit(0));
-});
