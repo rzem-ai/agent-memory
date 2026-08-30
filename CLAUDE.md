@@ -19,6 +19,14 @@ memory Postgres.
   column is `time_window` (property `window`).
 - **The text output shapes are a frozen contract** - the agent-memory plugin's
   hooks grep them. Change formatters only with the plugin in the same commit.
+- **`.github/workflows/release.yml` is shared with `agent-memory-js`** and is
+  kept byte-identical with that repo's copy. Change both together or the two
+  release pipelines drift. It fires on a pushed `v*.*.*` tag and asserts two
+  things a tag push cannot assert on its own: the tagged commit is an ancestor
+  of `main`, and the tag matches `package.json`. Actions are SHA-pinned across
+  `ci.yml` and `release.yml`; bump a pin in every workflow in both repos at
+  once. `main` is PR-protected, so a version bump lands via PR and the tag is
+  pushed afterwards.
 
 ## Commands
 
