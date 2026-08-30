@@ -137,6 +137,25 @@ const StdioSchema = z
   })
   .strict();
 
+/**
+ * The mesh observatory this server announces itself to (see
+ * observability/mesh.ts). Absent, no telemetry leaves the process.
+ */
+const ObservatorySchema = z
+  .object({
+    url: z.string().url(),
+    /**
+     * The name the observatory files this process under. It should match the
+     * key the calling agent registers this server as in its `mcpServers`, so
+     * the caller's declared edge and this node line up.
+     */
+    name: z.string().min(1).default("memory"),
+    role: z.string().min(1).default("memory · postgres + pgvector"),
+    /** Required by the observatory when it is reachable off its own machine. */
+    token: SecretRefSchema.optional(),
+  })
+  .strict();
+
 export const ConfigSchema = z
   .object({
     http: HttpSchema.prefault({}),
@@ -149,6 +168,8 @@ export const ConfigSchema = z
     vault: VaultSchema.prefault({}),
     auth: AuthSchema.prefault({}),
     log_level: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+    /** Absent for a server that does not report to a mesh observatory. */
+    observatory: ObservatorySchema.optional(),
   })
   .strict()
   .superRefine((config, ctx) => {

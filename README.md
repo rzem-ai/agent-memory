@@ -63,6 +63,20 @@ flowchart LR
     ING -.->|"writes documents"| PG
 ```
 
+### Telemetry to a mesh observatory
+
+Optional. With an `[observatory]` block in the config the server announces
+itself to the [agents repo's](https://github.com/rzem-ai/agents) observatory —
+`agent.hello` on boot, a heartbeat every 15 s, `agent.bye` on shutdown — and
+reports every tool call from its own side (duration, size, error, scope
+refusals; argument *values* are clipped and a capture body never leaves the
+process). It appears on the canvas as a node named after the block's `name`
+(default `memory`, the key Merlin registers it under), with the calling
+agent's declared edge pointing at it. Fire-and-forget throughout: a dead
+observatory costs a memory call nothing. What it cannot do is tie a call to a
+request — the MCP client forwards no correlation id — so its events show on
+the node, not inside a request's transcript.
+
 ## The nine tools
 
 No tool takes an agent id — **the credential carries the namespace**.

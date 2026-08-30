@@ -1,4 +1,4 @@
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -14,7 +14,7 @@ Returns: text 'Forgot thought <uuid>' on success, or 'Thought <uuid> not found o
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_forget", async (args) => {
       const denied = requireScope(ctx, "memory_forget");
       if (denied) return denied;
       const forgotten = await ctx.thoughts.forget(args.thought_id, ctx.identity.agents);
@@ -22,6 +22,6 @@ Returns: text 'Forgot thought <uuid>' on success, or 'Thought <uuid> not found o
         forgotten ? `Forgot thought ${args.thought_id}` : `Thought ${args.thought_id} not found or already deleted`,
         { thought_id: args.thought_id, forgotten },
       );
-    },
+    }),
   );
 };

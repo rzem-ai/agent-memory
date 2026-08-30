@@ -52,5 +52,8 @@ export function redactedConfig(config: AppConfig): Record<string, unknown> {
       ...config.auth,
       tokens: config.auth.tokens.map((t) => ({ ...t, secret: "[secret-ref]" })),
     },
+    ...(config.observatory
+      ? { observatory: { ...config.observatory, token: config.observatory.token ? "[secret-ref]" : undefined } }
+      : {}),
   };
 }

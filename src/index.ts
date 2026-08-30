@@ -23,6 +23,7 @@ const server = buildHttpServer({ config, authenticator, serverDeps: wired.server
 
 server.listen(config.http.port, config.http.host, () => {
   log.info({ host: config.http.host, port: config.http.port }, "agent-memory http server listening");
+  wired.mesh.announce({ kind: "mcp-http", url: `http://${config.http.host}:${config.http.port}/mcp` });
 });
 
 async function shutdown(signal: string): Promise<void> {
