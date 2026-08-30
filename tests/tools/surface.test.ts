@@ -13,6 +13,8 @@ import { TOOL_SCOPES } from "../../src/auth/scopes.js";
 import { createServer, type ServerDeps } from "../../src/server.js";
 import type { AgentIdentity } from "../../src/auth/identity.js";
 import { createLogger } from "../../src/observability/logger.js";
+import type { Mesh } from "../../src/observability/mesh.js";
+import type { MeshEvent } from "../../src/observability/mesh-events.js";
 import type { CaptureResult, RankedResult } from "../../src/repositories/thoughts.js";
 
 const EXPECTED_NAMES = [
@@ -141,6 +143,63 @@ describe("scope enforcement", () => {
     const result = await client.callTool({ name: "memory_capture", arguments: { content: "x", tags: [] } });
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain("no concrete namespace");
+    await client.close();
+  });
+});
+
+/** A mesh that records instead of posting. `agent`, `id` and `ts` are the emitter's job, so they are faked here. */
+function recordingMesh(): Mesh & { events: MeshEvent[] } {
+  const events: MeshEvent[] = [];
+  return {
+    events,
+    emit: (event) => {
+      events.push({ ...event, agent: "memory", id: `e${events.length}`, ts: new Date().toISOString() });
+    },
+    announce: () => undefined,
+    farewell: () => undefined,
+  };
+}
+
+describe("mesh telemetry", () => {
+  it("every call is bracketed by tool.called and tool.result, seen from this side", async () => {
+    const mesh = recordingMesh();
+    const server = createServer({ ...fakeDeps(), mesh }, FULL);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new Client({ name: "telemetry-test", version: "0.0.0" });
+    await client.connect(clientTransport);
+
+    await client.callTool({ name: "memory_search", arguments: { query: "retry backoff", corpus: "thoughts", limit: 3 } });
+    expect(mesh.events.map((e) => e.type)).toEqual(["tool.called", "tool.result"]);
+    expect(mesh.events[0]?.payload).toEqual({ name: "memory_search", inputSummary: 'query="retry backoff" corpus="thoughts" limit=3' });
+    expect(mesh.events[1]?.payload).toMatchObject({ name: "memory_search", ok: true });
+    expect(typeof mesh.events[1]?.payload.durationMs).toBe("number");
+    expect(mesh.events.every((e) => e.correlationId === "")).toBe(true);
+    await client.close();
+  });
+
+  it("a scope refusal is a tool.result with ok:false, and a capture body never appears in the summary", async () => {
+    const mesh = recordingMesh();
+    const server = createServer({ ...fakeDeps(), mesh }, { name: "reader", agents: ["default"], scopes: ["memory:read"] });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new Client({ name: "telemetry-test", version: "0.0.0" });
+    await client.connect(clientTransport);
+
+    const body = "x".repeat(400);
+    await client.callTool({ name: "memory_capture", arguments: { content: body, tags: ["a", "b"] } });
+    expect(mesh.events[1]?.payload).toMatchObject({ name: "memory_capture", ok: false });
+    const summary = String(mesh.events[0]?.payload.inputSummary);
+    expect(summary.length).toBeLessThanOrEqual(120);
+    expect(summary).toContain("tags=[2]");
+    expect(summary).not.toContain(body);
+    await client.close();
+  });
+
+  it("without a mesh on the context, tools run untouched", async () => {
+    const client = await connect(FULL);
+    const result = await client.callTool({ name: "memory_kv_list", arguments: {} });
+    expect(result.isError).not.toBe(true);
     await client.close();
   });
 });

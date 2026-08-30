@@ -1,5 +1,5 @@
 import { primaryAgent } from "../auth/identity.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -15,7 +15,7 @@ Returns: text 'Deleted '<key>'' on success, or 'Key '<key>' not found' if the ke
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_kv_delete", async (args) => {
       const denied = requireScope(ctx, "memory_kv_delete");
       if (denied) return denied;
       const agentId = primaryAgent(ctx.identity);
@@ -24,6 +24,6 @@ Returns: text 'Deleted '<key>'' on success, or 'Key '<key>' not found' if the ke
       }
       const deleted = await ctx.kv.delete(agentId, args.key);
       return textResult(deleted ? `Deleted '${args.key}'` : `Key '${args.key}' not found`, { key: args.key, deleted });
-    },
+    }),
   );
 };

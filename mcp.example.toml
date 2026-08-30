@@ -77,3 +77,15 @@ audience = "https://memory.example.com"
 scope_claim = "scope"
 # The JWT claim carrying the agent namespace list for the caller.
 agents_claim = "memory_agents"
+
+# Report to a mesh observatory (the agents repo's dashboard): a hello on boot,
+# a heartbeat every 15 s, a goodbye on shutdown, and every tool call as seen
+# from here. Omit the whole block and nothing leaves the process.
+# [observatory]
+# url = "http://localhost:41500"
+# The name the observatory files this server under. Match the key the calling
+# agent uses for it in its mcpServers, so the caller's declared edge lines up.
+# name = "memory"
+# role = "memory · postgres + pgvector"
+# Required by the observatory once it is reachable off its own machine.
+# token = { env = "OBSERVATORY_TOKEN" }

@@ -18,6 +18,7 @@ import type { ThoughtsRepository, MemorySearchConfig } from "../repositories/tho
 import type { KvRepository } from "../repositories/kv.js";
 import type { VaultRecall } from "../services/recall.js";
 import type { Logger } from "../observability/logger.js";
+import type { Mesh } from "../observability/mesh.js";
 import { DOCUMENT_BODY_MAX_CHARS } from "../domain/recall.js";
 
 export const MODES = ["recency_weighted", "similarity", "recent", "since"] as const;
@@ -90,6 +91,8 @@ export interface ToolContext {
   vault: VaultRecall;
   search: MemorySearchConfig;
   log: Logger;
+  /** Mesh telemetry. Absent (tests, standalone runs) means no events leave the process. */
+  mesh?: Mesh;
 }
 
 export type RegisterFn = (server: McpServer, ctx: ToolContext) => void;
@@ -120,4 +123,73 @@ export function requireScope(ctx: ToolContext, toolName: MemoryToolName): ToolRe
     return errorResult(`Insufficient scope: '${toolName}' requires '${scope}' (caller '${ctx.identity.name}' has: ${ctx.identity.scopes.join(", ") || "none"}).`);
   }
   return null;
+}
+
+const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+/**
+ * One line describing a call's arguments for the observatory's tool card:
+ * `query="retry backoff" corpus=all`. Strings are quoted and clipped, arrays
+ * and objects summarised by size - a memory capture's body never leaves the
+ * process through telemetry.
+ */
+export function summariseArgs(args: unknown, max = 120): string {
+  if (!args || typeof args !== "object") return "";
+  const parts = Object.entries(args as Record<string, unknown>).map(([key, value]) => {
+    if (typeof value === "string") return `${key}=${JSON.stringify(clip(value, 40))}`;
+    if (Array.isArray(value)) return `${key}=[${value.length}]`;
+    if (value && typeof value === "object") return `${key}={…}`;
+    return `${key}=${String(value)}`;
+  });
+  return clip(parts.join(" "), max);
+}
+
+/**
+ * Wraps a tool handler so the mesh sees `tool.called` and `tool.result`
+ * around it - from this server's point of view: duration, size, and whether
+ * it was an error, including the scope refusals `requireScope` produces. A
+ * handler that throws is reported as a failed result and still throws.
+ */
+export function traced<A>(
+  ctx: ToolContext,
+  name: MemoryToolName,
+  fn: (args: A) => Promise<ToolResult>,
+): (args: A) => Promise<ToolResult> {
+  const mesh = ctx.mesh;
+  if (!mesh) return fn;
+  return async (args) => {
+    mesh.emit({ correlationId: "", taskId: "", type: "tool.called", payload: { name, inputSummary: summariseArgs(args) } });
+    const started = performance.now();
+    try {
+      const result = await fn(args);
+      const text = result.content.map((c) => c.text).join("\n");
+      mesh.emit({
+        correlationId: "",
+        taskId: "",
+        type: "tool.result",
+        payload: {
+          name,
+          ok: result.isError !== true,
+          durationMs: Math.round(performance.now() - started),
+          bytes: Buffer.byteLength(text),
+          preview: clip(text.split("\n")[0] ?? "", 140),
+        },
+      });
+      return result;
+    } catch (error) {
+      mesh.emit({
+        correlationId: "",
+        taskId: "",
+        type: "tool.result",
+        payload: {
+          name,
+          ok: false,
+          durationMs: Math.round(performance.now() - started),
+          bytes: 0,
+          preview: clip(error instanceof Error ? error.message : String(error), 140),
+        },
+      });
+      throw error;
+    }
+  };
 }

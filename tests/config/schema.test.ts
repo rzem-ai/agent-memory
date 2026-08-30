@@ -116,3 +116,26 @@ describe("secret references", () => {
     ).toBe(true);
   });
 });
+
+describe("observatory", () => {
+  it("is absent by default", () => {
+    const result = parse({ database: DATABASE });
+    expect(result.success && result.data.observatory).toBeUndefined();
+  });
+
+  it("needs only a url; name and role default to what the mesh expects", () => {
+    const result = parse({ database: DATABASE, observatory: { url: "http://localhost:41500" } });
+    expect(result.success && result.data.observatory).toEqual({
+      url: "http://localhost:41500",
+      name: "memory",
+      role: "memory · postgres + pgvector",
+    });
+  });
+
+  it("takes the token as a secret ref and rejects unknown keys", () => {
+    const ok = parse({ database: DATABASE, observatory: { url: "http://hub", token: { env: "OBSERVATORY_TOKEN" } } });
+    expect(ok.success && ok.data.observatory?.token).toEqual({ env: "OBSERVATORY_TOKEN" });
+    expect(parse({ database: DATABASE, observatory: { url: "http://hub", token: "plain" } }).success).toBe(false);
+    expect(parse({ database: DATABASE, observatory: { url: "http://hub", colour: "purple" } }).success).toBe(false);
+  });
+});

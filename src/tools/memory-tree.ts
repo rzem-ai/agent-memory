@@ -1,5 +1,5 @@
 import { formatTreeList, formatTreeNode, formatTreeSearch } from "../domain/recall.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 const DEFAULT_SEARCH_LIMIT = 7;
 
@@ -19,7 +19,7 @@ A node's 'path' is 'mail/2026/07/15' style (source kind / year / month / day). S
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_tree", async (args) => {
       const denied = requireScope(ctx, "memory_tree");
       if (denied) return denied;
       try {
@@ -45,6 +45,6 @@ A node's 'path' is 'mail/2026/07/15' style (source kind / year / month / day). S
       } catch (err) {
         return errorResult(`memory_tree failed: ${err instanceof Error ? err.message : String(err)}`);
       }
-    },
+    }),
   );
 };

@@ -39,6 +39,7 @@ serveStdio(() => createServer(wired.serverDeps, identity), {
 });
 
 log.info({ agent: agentId }, "agent-memory stdio server ready");
+wired.mesh.announce({ kind: "mcp-stdio" });
 
 process.on("SIGINT", () => {
   void wired.close().finally(() => process.exit(0));

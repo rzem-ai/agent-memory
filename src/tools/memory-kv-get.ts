@@ -1,5 +1,5 @@
 import { primaryAgent } from "../auth/identity.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -15,7 +15,7 @@ Returns: pretty-printed JSON of the stored value as text. If the key is absent, 
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_kv_get", async (args) => {
       const denied = requireScope(ctx, "memory_kv_get");
       if (denied) return denied;
       const agentId = primaryAgent(ctx.identity);
@@ -26,6 +26,6 @@ Returns: pretty-printed JSON of the stored value as text. If the key is absent, 
       return value === null
         ? textResult(`No value found for key '${args.key}'`, { key: args.key, found: false })
         : textResult(JSON.stringify(value, null, 2), { key: args.key, found: true, value });
-    },
+    }),
   );
 };

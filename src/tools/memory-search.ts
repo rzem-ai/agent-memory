@@ -2,7 +2,7 @@ import { formatThoughtResults } from "../domain/recall.js";
 import type { RecallCorpus } from "../domain/recall.js";
 import { runMergedRecall } from "../services/recall.js";
 import type { RelevanceMode } from "../repositories/thoughts.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 const DEFAULT_LIMIT = 5;
 
@@ -42,7 +42,7 @@ relevance_value overrides: recency_weighted decay days (default ${search.recency
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_search", async (args) => {
       const denied = requireScope(ctx, "memory_search");
       if (denied) return denied;
       if (!args.query.trim()) {
@@ -76,6 +76,6 @@ relevance_value overrides: recency_weighted decay days (default ${search.recency
       } catch (err) {
         return errorResult(`Search failed: ${err instanceof Error ? err.message : String(err)}`);
       }
-    },
+    }),
   );
 };

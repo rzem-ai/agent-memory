@@ -1,5 +1,5 @@
 import { primaryAgent } from "../auth/identity.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -16,7 +16,7 @@ Returns: text 'Set '<key>''.`,
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_kv_set", async (args) => {
       const denied = requireScope(ctx, "memory_kv_set");
       if (denied) return denied;
       const agentId = primaryAgent(ctx.identity);
@@ -25,6 +25,6 @@ Returns: text 'Set '<key>''.`,
       }
       await ctx.kv.set(agentId, args.key, args.value ?? null);
       return textResult(`Set '${args.key}'`, { key: args.key, set: true });
-    },
+    }),
   );
 };

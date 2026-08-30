@@ -1,5 +1,5 @@
 import { primaryAgent } from "../auth/identity.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -23,7 +23,7 @@ Returns text:
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
-    async (args) => {
+    traced(ctx, "memory_capture", async (args) => {
       const denied = requireScope(ctx, "memory_capture");
       if (denied) return denied;
       if (!args.content.trim()) {
@@ -49,6 +49,6 @@ Returns text:
       } catch (err) {
         return errorResult(`Capture failed: ${err instanceof Error ? err.message : String(err)}`);
       }
-    },
+    }),
   );
 };

@@ -34,6 +34,10 @@ memory Postgres.
 - One file per tool under `src/tools/`; schemas live in the
   `MEMORY_TOOL_SCHEMAS` registry in `shared.ts` (the build and the parity test
   both read it - keep it that way).
+- `src/observability/mesh-events.ts` is a copy of the agents repo's mesh
+  contract (types only, by design — no shared package). Change it there first.
+  `traced()` in `tools/shared.ts` wraps every tool handler; a new tool wraps
+  its handler the same way.
 - Secrets only via `SecretRef` (`{ env }`/`{ file }`) - never in TOML, never
   logged (`redactedConfig`).
 - Zod 4: input-side defaults on nested objects are `.prefault({})`, not

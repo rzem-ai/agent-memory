@@ -1,5 +1,5 @@
 import { primaryAgent } from "../auth/identity.js";
-import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, type RegisterFn } from "./shared.js";
+import { AnyOutput, MEMORY_TOOL_SCHEMAS, errorResult, requireScope, textResult, traced, type RegisterFn } from "./shared.js";
 
 export const register: RegisterFn = (server, ctx) => {
   server.registerTool(
@@ -12,7 +12,7 @@ Returns: text with one line per entry formatted as '<key>: <json-value>'. If the
       outputSchema: AnyOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async () => {
+    traced(ctx, "memory_kv_list", async () => {
       const denied = requireScope(ctx, "memory_kv_list");
       if (denied) return denied;
       const agentId = primaryAgent(ctx.identity);
@@ -25,6 +25,6 @@ Returns: text with one line per entry formatted as '<key>: <json-value>'. If the
         return textResult("No KV entries", { count: 0, entries: {} });
       }
       return textResult(keys.map((k) => `${k}: ${JSON.stringify(entries[k])}`).join("\n"), { count: keys.length, entries });
-    },
+    }),
   );
 };
