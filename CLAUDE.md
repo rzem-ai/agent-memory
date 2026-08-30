@@ -20,6 +20,11 @@ memory Postgres.
 - **The text output shapes are a frozen contract** - the agent-memory plugin's
   hooks grep them. Change formatters only with the plugin in the same commit.
 
+- **Deployment topology is described three times** - `compose.yaml`, the
+  systemd unit, and `terraform/` (OpenTofu; see docs/TERRAFORM.md). A change to
+  ports, config shape or dependency wiring touches every one that applies. CI
+  validates the HCL but cannot detect drift between the three.
+
 ## Commands
 
 - `npm run check` - lint + typecheck + tests + build; run before claiming done.

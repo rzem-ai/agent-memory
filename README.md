@@ -128,7 +128,8 @@ claude mcp add --transport stdio agent-memory -- \
 
 Deployment behind a reverse proxy, systemd and OAuth: [docs/DEPLOY.md](docs/DEPLOY.md).
 Container deployment with a complete pgvector and Ollama stack:
-[docs/DOCKER.md](docs/DOCKER.md).
+[docs/DOCKER.md](docs/DOCKER.md). Declarative deployment with OpenTofu, and the
+reusable module for other MCP servers: [docs/TERRAFORM.md](docs/TERRAFORM.md).
 
 ## How recall works
 
@@ -224,6 +225,8 @@ transport is included for local single-user use.
   reverse proxy, smoke tests, operational notes.
 - [docs/DOCKER.md](docs/DOCKER.md) — standalone image and complete Docker
   Compose deployment with PostgreSQL/pgvector and Ollama.
+- [docs/TERRAFORM.md](docs/TERRAFORM.md) — deploying this and other MCP servers
+  with OpenTofu: the layering, secret and state handling, and the limits.
 - [migrations/README.md](migrations/README.md) — schema ownership and the
   adopt-don't-break migration rules.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — the invariants to know before changing
