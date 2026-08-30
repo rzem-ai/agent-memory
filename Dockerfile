@@ -27,6 +27,13 @@ FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
+# The Node base image lags Alpine's package repo: every node:24.x-alpine3.24
+# tag still ships openssl 3.5.7-r0 (CVE-2026-14456, HIGH) while v3.24/main has
+# 3.5.8-r0. 24.19 and 24.20 share one base layer, so bumping the Node patch
+# fixes nothing - upgrade the packages directly. Drop this line once the base
+# image catches up and the CI scan stays green without it.
+RUN apk add --no-cache --upgrade libcrypto3 libssl3
+
 # Nothing at runtime shells out to a package manager, and npm's own bundled
 # dependencies (tar, undici, brace-expansion, ip-address) are otherwise the
 # only remaining source of CVEs in the image. Production modules are installed
