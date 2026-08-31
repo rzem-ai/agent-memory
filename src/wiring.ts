@@ -52,7 +52,9 @@ export function buildDeps(config: AppConfig, log: Logger): Wired {
     search,
   });
   const kv = createKvRepository(db.query);
-  const vaultRepo = createVaultReadRepository(db.vault);
+  const vaultRepo = createVaultReadRepository(db.vault, {
+    ...(config.vault.default_owner ? { defaultOwner: config.vault.default_owner } : {}),
+  });
   const vault = createVaultRecall({
     repo: vaultRepo,
     documentEmbeddings: embeddings.documents,

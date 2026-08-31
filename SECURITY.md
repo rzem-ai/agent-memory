@@ -23,7 +23,9 @@ the interesting failures are:
 - **Namespace escape** — any path by which a credential scoped to one agent can
   read, write or delete another agent's memory. Reads span only the
   credential's namespaces, writes land in its first concrete namespace, and
-  deletes are guarded in SQL.
+  deletes are guarded in SQL. As of migration `0003` this covers the vault
+  corpus (documents, chunks via their document, tree nodes) as well as
+  thoughts and KV; vault rows with no owner belong to `[vault] default_owner`.
 - **Authentication bypass** — reaching a tool without a valid credential, or
   with one lacking the tool's scope. `/health` and the RFC 9728 metadata
   document are the only unauthenticated routes by design.

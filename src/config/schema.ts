@@ -120,6 +120,10 @@ const VaultSchema = z
   .object({
     /** Absolute path of the vault root when mounted on this host; absent = chunk fallback. */
     dir: z.string().min(1).optional(),
+    /** The namespace that owns vault rows with no agent_id - rows written before
+     *  migration 0003, or by an ingestion pipeline that does not set it yet.
+     *  Absent = such rows are visible only to a wildcard identity. */
+    default_owner: z.string().min(1).optional(),
   })
   .strict();
 

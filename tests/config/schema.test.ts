@@ -139,3 +139,23 @@ describe("observatory", () => {
     expect(parse({ database: DATABASE, observatory: { url: "http://hub", colour: "purple" } }).success).toBe(false);
   });
 });
+
+describe("vault default owner", () => {
+  it("is absent by default - NULL-owner rows are then wildcard-only", () => {
+    const result = parse({ database: DATABASE });
+    expect(result.success).toBe(true);
+    expect(result.data?.vault.default_owner).toBeUndefined();
+  });
+
+  it("accepts a namespace", () => {
+    const result = parse({ database: DATABASE, vault: { default_owner: "angus" } });
+    expect(result.success).toBe(true);
+    expect(result.data?.vault.default_owner).toBe("angus");
+  });
+
+  it("rejects an empty string", () => {
+    const result = parse({ database: DATABASE, vault: { default_owner: "" } });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.some((issue) => issue.path.join(".") === "vault.default_owner")).toBe(true);
+  });
+});
