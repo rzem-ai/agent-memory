@@ -24,14 +24,17 @@ A node's 'path' is 'mail/2026/07/15' style (source kind / year / month / day). S
       if (denied) return denied;
       try {
         if (args.op === "list") {
-          const entries = await ctx.vault.treeList(args.path);
+          const entries = await ctx.vault.treeList({
+            agents: ctx.identity.agents,
+            ...(args.path !== undefined ? { path: args.path } : {}),
+          });
           return textResult(formatTreeList(args.path ?? "roots", entries), { op: "list", count: entries.length });
         }
         if (args.op === "read") {
           if (!args.path?.trim()) {
             return errorResult("Error: 'path' is required for op 'read'.");
           }
-          const view = await ctx.vault.treeRead(args.path);
+          const view = await ctx.vault.treeRead(args.path, { agents: ctx.identity.agents });
           return view
             ? textResult(formatTreeNode(view), { op: "read", path: view.path, state: view.state })
             : textResult(`No tree node at path '${args.path}'.`, { op: "read", path: args.path, found: false });
@@ -40,7 +43,10 @@ A node's 'path' is 'mail/2026/07/15' style (source kind / year / month / day). S
         if (!args.query?.trim()) {
           return errorResult("Error: 'query' is required for op 'search'.");
         }
-        const results = await ctx.vault.treeSearch(args.query, { limit: args.limit ?? DEFAULT_SEARCH_LIMIT });
+        const results = await ctx.vault.treeSearch(args.query, {
+          agents: ctx.identity.agents,
+          limit: args.limit ?? DEFAULT_SEARCH_LIMIT,
+        });
         return textResult(formatTreeSearch(args.query, results), { op: "search", count: results.length });
       } catch (err) {
         return errorResult(`memory_tree failed: ${err instanceof Error ? err.message : String(err)}`);

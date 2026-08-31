@@ -54,8 +54,8 @@ function fakeDeps(): ServerDeps {
   };
 }
 
-async function connect(identity: AgentIdentity) {
-  const server = createServer(fakeDeps(), identity);
+async function connect(identity: AgentIdentity, deps: ServerDeps = fakeDeps()) {
+  const server = createServer(deps, identity);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "surface-test", version: "0.0.0" });
@@ -201,5 +201,42 @@ describe("mesh telemetry", () => {
     const result = await client.callTool({ name: "memory_kv_list", arguments: {} });
     expect(result.isError).not.toBe(true);
     await client.close();
+  });
+});
+
+describe("vault reads carry the credential's namespaces", () => {
+  it("memory_search (documents), memory_read_document and every memory_tree op", async () => {
+    const seen: string[][] = [];
+    const deps = fakeDeps();
+    deps.vault = {
+      searchDocuments: async (_q, o) => {
+        seen.push([...o.agents]);
+        return [];
+      },
+      treeList: async (o) => {
+        seen.push([...o.agents]);
+        return [];
+      },
+      treeRead: async (_p, o) => {
+        seen.push([...o.agents]);
+        return null;
+      },
+      treeSearch: async (_q, o) => {
+        seen.push([...o.agents]);
+        return [];
+      },
+      readDocument: async (_id, o) => {
+        seen.push([...o.agents]);
+        return null;
+      },
+    };
+    const client = await connect({ name: "alex-token", agents: ["alex"], scopes: ["memory:read"] }, deps);
+    await client.callTool({ name: "memory_search", arguments: { query: "q", corpus: "documents" } });
+    await client.callTool({ name: "memory_read_document", arguments: { document_id: "doc-1" } });
+    await client.callTool({ name: "memory_tree", arguments: { op: "list" } });
+    await client.callTool({ name: "memory_tree", arguments: { op: "list", path: "mail/2026" } });
+    await client.callTool({ name: "memory_tree", arguments: { op: "read", path: "mail/2026" } });
+    await client.callTool({ name: "memory_tree", arguments: { op: "search", query: "q" } });
+    expect(seen).toEqual([["alex"], ["alex"], ["alex"], ["alex"], ["alex"], ["alex"]]);
   });
 });

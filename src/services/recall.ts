@@ -29,12 +29,19 @@ import type { EmbeddingClient } from "../embeddings/index.js";
 
 const YEAR_DEPTH = 1;
 
+/** Every method takes the caller's namespaces - the credential carries them. */
 export interface VaultRecall {
-  searchDocuments(query: string, opts: { limit: number; threshold?: number }): Promise<DocumentChunkHit[]>;
-  treeList(path?: string): Promise<TreeListEntry[]>;
-  treeRead(path: string): Promise<TreeNodeView | null>;
-  treeSearch(query: string, opts: { limit: number; threshold?: number }): Promise<TreeSearchResult[]>;
-  readDocument(documentId: string, opts?: { maxChars?: number }): Promise<DocumentView | null>;
+  searchDocuments(
+    query: string,
+    opts: { agents: readonly string[]; limit: number; threshold?: number },
+  ): Promise<DocumentChunkHit[]>;
+  treeList(opts: { agents: readonly string[]; path?: string }): Promise<TreeListEntry[]>;
+  treeRead(path: string, opts: { agents: readonly string[] }): Promise<TreeNodeView | null>;
+  treeSearch(
+    query: string,
+    opts: { agents: readonly string[]; limit: number; threshold?: number },
+  ): Promise<TreeSearchResult[]>;
+  readDocument(documentId: string, opts: { agents: readonly string[]; maxChars?: number }): Promise<DocumentView | null>;
 }
 
 export interface VaultRecallDeps {
@@ -53,13 +60,17 @@ export function createVaultRecall(deps: VaultRecallDeps): VaultRecall {
     async searchDocuments(query, opts) {
       const embedding = await deps.documentEmbeddings.embed(query);
       return repo.searchChunks(embedding, {
+        agents: opts.agents,
         limit: recallCandidatePool(opts.limit),
         ...(opts.threshold !== undefined ? { threshold: opts.threshold } : {}),
       });
     },
 
-    async treeList(path) {
-      const nodes = path === undefined ? await repo.listNodesByDepth(YEAR_DEPTH) : await repo.listChildrenOf(path);
+    async treeList(opts) {
+      const nodes =
+        opts.path === undefined
+          ? await repo.listNodesByDepth(YEAR_DEPTH, opts.agents)
+          : await repo.listChildrenOf(opts.path, opts.agents);
       return nodes.map((node) => ({
         path: node.path,
         depth: node.depth,
@@ -71,8 +82,8 @@ export function createVaultRecall(deps: VaultRecallDeps): VaultRecall {
       }));
     },
 
-    async treeRead(path) {
-      const node = await repo.getNodeByPath(path);
+    async treeRead(path, opts) {
+      const node = await repo.getNodeByPath(path, opts.agents);
       if (!node) {
         return null;
       }
@@ -90,6 +101,7 @@ export function createVaultRecall(deps: VaultRecallDeps): VaultRecall {
     async treeSearch(query, opts) {
       const embedding = await deps.documentEmbeddings.embed(query);
       const hits = await repo.searchNodes(embedding, {
+        agents: opts.agents,
         limit: recallCandidatePool(opts.limit),
         ...(opts.threshold !== undefined ? { threshold: opts.threshold } : {}),
       });
@@ -111,13 +123,13 @@ export function createVaultRecall(deps: VaultRecallDeps): VaultRecall {
     },
 
     async readDocument(documentId, opts) {
-      const doc = await repo.getDocument(documentId);
+      const doc = await repo.getDocument(documentId, opts.agents);
       if (!doc) {
         return null;
       }
       // Defence in depth alongside the schema's .max(): clamp a caller-supplied
       // cap so a tainted document cannot instruct the model past the ceiling.
-      const maxChars = Math.min(opts?.maxChars ?? DOCUMENT_BODY_MAX_CHARS, DOCUMENT_BODY_MAX_CHARS);
+      const maxChars = Math.min(opts.maxChars ?? DOCUMENT_BODY_MAX_CHARS, DOCUMENT_BODY_MAX_CHARS);
 
       // Prefer the vault file (canonical body); fall back to the chunk table's
       // text when the vault is not mounted here or the file is missing.
@@ -197,7 +209,7 @@ export async function runMergedRecall(
   let documents: DocumentChunkHit[] | null = null;
   if (deps.vault) {
     try {
-      documents = await deps.vault.searchDocuments(args.query, { limit: args.limit });
+      documents = await deps.vault.searchDocuments(args.query, { agents: args.agents, limit: args.limit });
     } catch {
       documents = null;
     }
