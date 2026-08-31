@@ -250,6 +250,20 @@ sudo -u agent-memory /srv/agent-memory/current/scripts/update.sh
 
 (git fetch/pull, `npm install`, build, restart the unit.)
 
+## Upgrading to 0003 (vault namespaces)
+
+`npm run migrate` adds `agent_id` to `memory_documents` and `memory_tree_nodes`
+and changes no rows. **Before restarting the service**, set in
+`/etc/agent-memory/mcp.toml`:
+
+    [vault]
+    default_owner = "angus"
+
+naming whichever namespace should own everything ingested so far. Without it,
+every existing document is invisible to every non-wildcard credential the
+moment the new build starts. The ingestion pipeline is unaffected either way:
+rows it writes without an `agent_id` keep belonging to `default_owner`.
+
 ## Operational notes
 
 - **Fail-open clients.** Recommend callers time-bound every request and treat
