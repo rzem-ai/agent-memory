@@ -1,6 +1,6 @@
 /**
  * Drizzle definitions for the vault corpus tables - the query-side read model
- * of shapes OWNED by this repo's migrations/0002_vault_corpus.sql. Any change
+ * of shapes OWNED by this repo's migrations/0002_vault_corpus.sql and 0003_vault_namespace.sql. Any change
  * to that migration family must update this file in the same commit.
  *
  * Conventions (deliberate, historical):
@@ -66,8 +66,14 @@ export const memoryDocuments = pgTable(
     eventAt: isoTimestamp("event_at").notNull(),
     ingestedAt: isoTimestamp("ingested_at").notNull(),
     deletedAt: isoTimestamp("deleted_at"),
+    // 0003: the owning namespace. NULL = pre-0003 or ingestion-written; owned
+    // by [vault] default_owner at query time (repositories/namespace.ts).
+    agentId: text("agent_id"),
   },
-  (table) => [uniqueIndex("memory_documents_source_external_idx").on(table.sourceKind, table.externalId)],
+  (table) => [
+    uniqueIndex("memory_documents_source_external_idx").on(table.sourceKind, table.externalId),
+    index("memory_documents_agent_idx").on(table.agentId),
+  ],
 );
 
 export const memoryChunks = pgTable(
@@ -108,8 +114,13 @@ export const memoryTreeNodes = pgTable(
     lastAppendedAt: isoTimestamp("last_appended_at"),
     createdAt: isoTimestamp("created_at").notNull(),
     updatedAt: isoTimestamp("updated_at").notNull(),
+    // 0003: see memoryDocuments.agentId. path stays UNIQUE - one tree per database.
+    agentId: text("agent_id"),
   },
-  (table) => [index("memory_tree_nodes_depth_state_idx").on(table.depth, table.state)],
+  (table) => [
+    index("memory_tree_nodes_depth_state_idx").on(table.depth, table.state),
+    index("memory_tree_nodes_agent_idx").on(table.agentId, table.depth, table.state),
+  ],
 );
 
 export type MemoryDocument = typeof memoryDocuments.$inferSelect;
