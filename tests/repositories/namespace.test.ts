@@ -15,6 +15,11 @@ const render = (clause: SQL) => new PgDialect().sqlToQuery(clause);
 
 describe("unbounded", () => {
   it("is true for an empty list and for the wildcard", () => {
+    // [] means "no filter". No credential can carry it today - every identity
+    // source forbids it: src/config/schema.ts (.min(1) on static-token agents),
+    // src/auth/oauth.ts (an empty claim yields no identity), src/stdio.ts
+    // (.min(1) on agent_id), and the auth-disabled path uses ["*"]. If one of
+    // those ever loosens, [] must fail closed here instead.
     expect(unbounded([])).toBe(true);
     expect(unbounded(["*"])).toBe(true);
     expect(unbounded(["alex", "*"])).toBe(true);

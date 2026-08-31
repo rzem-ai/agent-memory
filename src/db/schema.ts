@@ -1,7 +1,8 @@
 /**
- * Drizzle definitions for the vault corpus tables - the query-side read model
- * of shapes OWNED by this repo's migrations/0002_vault_corpus.sql and 0003_vault_namespace.sql. Any change
- * to that migration family must update this file in the same commit.
+ * Drizzle definitions for the vault corpus tables - the query-side read
+ * model of shapes OWNED by this repo's migrations/0002_vault_corpus.sql
+ * and 0003_vault_namespace.sql. Any change to that migration family must
+ * update this file in the same commit.
  *
  * Conventions (deliberate, historical):
  * - ULID text primary keys.

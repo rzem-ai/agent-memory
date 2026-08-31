@@ -75,7 +75,6 @@ export const CAPTURE = {
   supersedeLimit: 3,
 } as const;
 
-
 export interface ThoughtsRepository {
   searchRanked(query: string, opts: RankedSearchOptions): Promise<RankedResult[]>;
   /** Capture into ONE namespace (the identity's primary agent). */
