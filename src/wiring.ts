@@ -52,7 +52,12 @@ export function buildDeps(config: AppConfig, log: Logger): Wired {
     search,
   });
   const kv = createKvRepository(db.query);
-  const vaultRepo = createVaultReadRepository(db.vault);
+  const vaultRepo = createVaultReadRepository(db.vault, {
+    ...(config.vault.default_owner ? { defaultOwner: config.vault.default_owner } : {}),
+  });
+  if (!config.vault.default_owner) {
+    log.warn("[vault] default_owner is unset - vault rows with no owner are visible only to wildcard credentials");
+  }
   const vault = createVaultRecall({
     repo: vaultRepo,
     documentEmbeddings: embeddings.documents,

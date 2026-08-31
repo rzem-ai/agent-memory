@@ -44,6 +44,10 @@ recency_floor = 0.1
 # Uncomment when the vault Markdown tree is mounted on this host; otherwise
 # memory_read_document serves reconstructed chunk text.
 # dir = "/srv/vault"
+# The namespace that owns vault rows with no agent_id: everything ingested
+# before migration 0003, and anything the ingestion pipeline writes without
+# one. Leave unset to hide those rows from every non-wildcard credential.
+# default_owner = "angus"
 
 [auth]
 enabled = true

@@ -67,7 +67,25 @@ describe("the shipped migration files", () => {
 
   it("exist, in corpus order", async () => {
     const files = await loadMigrationFiles(dir);
-    expect(files.map((f) => f.name)).toEqual(["0001_thoughts_corpus.sql", "0002_vault_corpus.sql"]);
+    expect(files.map((f) => f.name)).toEqual([
+      "0001_thoughts_corpus.sql",
+      "0002_vault_corpus.sql",
+      "0003_vault_namespace.sql",
+    ]);
+  });
+
+  it("0003 namespaces the vault corpus without touching chunks", async () => {
+    const files = await loadMigrationFiles(dir);
+    const sql = files.find((f) => f.name === "0003_vault_namespace.sql")?.sql ?? "";
+    expect(sql).toMatch(/ALTER TABLE memory_documents\s+ADD COLUMN IF NOT EXISTS agent_id TEXT/);
+    expect(sql).toMatch(/ALTER TABLE memory_tree_nodes\s+ADD COLUMN IF NOT EXISTS agent_id TEXT/);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS memory_documents_agent_idx/);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS memory_tree_nodes_agent_idx/);
+    // Chunks are read only through an inner join on documents; the filter
+    // lands on the join, and the largest table stays untouched.
+    expect(sql).not.toMatch(/ALTER TABLE memory_chunks/);
+    // No backfill: NULL rows are owned by [vault] default_owner at query time.
+    expect(sql).not.toMatch(/\bUPDATE\b/);
   });
 
   it("are idempotent in style - adoption must not break", async () => {

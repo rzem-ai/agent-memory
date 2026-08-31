@@ -250,6 +250,35 @@ sudo -u agent-memory /srv/agent-memory/current/scripts/update.sh
 
 (git fetch/pull, `npm install`, build, restart the unit.)
 
+## Upgrading to 0003 (vault namespaces)
+
+Migration `0003` adds `agent_id` to `memory_documents` and `memory_tree_nodes`
+and changes no rows. Two things differ from a routine update, and the order
+matters:
+
+1. **Every config that serves this database needs `[vault] default_owner`** —
+   the HTTP config in `/etc/agent-memory/mcp.toml` and any `[stdio]` config
+   alike, since a stdio server acts as one concrete namespace:
+
+       [vault]
+       default_owner = "angus"
+
+   naming whichever namespace should own everything ingested so far. Without
+   it, every existing document is invisible to every non-wildcard credential
+   the moment the new build starts. The ingestion pipeline is unaffected
+   either way: rows it writes without an `agent_id` keep belonging to
+   `default_owner`.
+
+2. **`scripts/update.sh` does not migrate.** Run the migration first, then the
+   usual update. `0003` is additive, so the running build ignores the new
+   column until it is restarted; a new build started against an un-migrated
+   database fails every document and tree read with
+   `column agent_id does not exist` until the migration has run:
+
+       cd /srv/agent-memory/current && git pull && npm install && npm run build
+       sudo -u agent-memory npm run migrate -- --config /etc/agent-memory/mcp.toml
+       sudo -u agent-memory /srv/agent-memory/current/scripts/update.sh
+
 ## Operational notes
 
 - **Fail-open clients.** Recommend callers time-bound every request and treat

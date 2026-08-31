@@ -12,7 +12,8 @@
  */
 
 import pg from "pg";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { AppConfig } from "../config/index.js";
 import { resolveSecret } from "../config/index.js";
 import * as schema from "./schema.js";
@@ -22,7 +23,10 @@ export type MemoryQuery = <R = Record<string, unknown>>(
   params?: readonly unknown[],
 ) => Promise<{ rows: R[]; rowCount: number | null }>;
 
-export type VaultDb = NodePgDatabase<typeof schema>;
+/** Any Drizzle Postgres handle over the vault schema. Widened from the
+ *  node-postgres class so a test can substitute drizzle-orm/pg-proxy's
+ *  recording driver - the vault repositories' answer to faking MemoryQuery. */
+export type VaultDb = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 export interface Db {
   pool: pg.Pool;

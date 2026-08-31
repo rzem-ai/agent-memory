@@ -7,6 +7,7 @@ family's DDL. The files here are the source of truth for:
 | --- | --- |
 | `0001_thoughts_corpus.sql` | `memory_thoughts`, `memory_kv_store`, `memory_observations`, `memory_patterns`, `agent_state`, `memory_match_thoughts()`, the touch-updated_at trigger |
 | `0002_vault_corpus.sql` | `memory_sync_sources`, `memory_documents`, `memory_chunks`, `memory_tree_nodes` |
+| `0003_vault_namespace.sql` | `agent_id` on `memory_documents` and `memory_tree_nodes` (+ indexes). No backfill: `NULL` rows belong to `[vault] default_owner`. A 0002-family change - `src/db/schema.ts` moved with it. |
 
 Apply with `npm run migrate` (`-- --config <path>` for a non-default config;
 DDL usually needs an admin-capable database user).

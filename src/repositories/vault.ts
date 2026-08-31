@@ -9,6 +9,7 @@ import { and, asc, eq, isNotNull, isNull, like, sql } from "drizzle-orm";
 import type { VaultDb } from "../db/pool.js";
 import { memoryChunks, memoryDocuments, memoryTreeNodes } from "../db/schema.js";
 import type { DocumentProvenance, DocumentTaint, MemoryChunk, MemoryDocument, MemoryTreeNode, SyncSourceKind } from "../db/schema.js";
+import { namespaceWhere } from "./namespace.js";
 
 /** One chunk-level ANN hit joined to its live parent document. */
 export interface DocumentChunkHit {
@@ -40,21 +41,41 @@ export interface TreeNodeHit {
 
 const vectorParam = (vector: readonly number[]): string => `[${vector.join(",")}]`;
 
-export interface VaultReadRepository {
-  /** ANN over memory_chunks in the 1024-d bge-m3 space, joined to live documents. */
-  searchChunks(embedding: readonly number[], opts: { limit: number; threshold?: number }): Promise<DocumentChunkHit[]>;
-  /** Every chunk of a document, ascending by seq - the body fallback for readDocument. */
-  listChunksByDocument(documentId: string): Promise<MemoryChunk[]>;
-  getDocument(id: string): Promise<MemoryDocument | undefined>;
-  getNodeByPath(path: string): Promise<MemoryTreeNode | undefined>;
-  listNodesByDepth(depth: number): Promise<MemoryTreeNode[]>;
-  listChildrenOf(parentPath: string): Promise<MemoryTreeNode[]>;
-  /** ANN over summarised tree-node embeddings (1024-d). Raw similarity; the
-   *  recall service applies the hotness boost and final cut. */
-  searchNodes(embedding: readonly number[], opts: { limit: number; threshold?: number }): Promise<TreeNodeHit[]>;
+export interface VaultReadRepositoryOptions {
+  /** The namespace that owns rows whose agent_id is NULL - pre-0003 rows, and
+   *  rows from an ingestion pipeline that does not set it. Unset = such rows
+   *  are visible only to a wildcard identity. */
+  defaultOwner?: string;
 }
 
-export function createVaultReadRepository(db: VaultDb): VaultReadRepository {
+/** Every read is scoped to the caller's namespaces. The credential carries
+ *  them; no tool exposes a namespace parameter. */
+export interface VaultReadRepository {
+  /** ANN over memory_chunks in the 1024-d bge-m3 space, joined to live documents. */
+  searchChunks(
+    embedding: readonly number[],
+    opts: { agents: readonly string[]; limit: number; threshold?: number },
+  ): Promise<DocumentChunkHit[]>;
+  /** Every chunk of a document, ascending by seq - the body fallback for
+   *  readDocument. NOT namespace-filtered: its only caller runs after a scoped
+   *  getDocument has already succeeded, so filtering again buys nothing. */
+  listChunksByDocument(documentId: string): Promise<MemoryChunk[]>;
+  getDocument(id: string, agents: readonly string[]): Promise<MemoryDocument | undefined>;
+  getNodeByPath(path: string, agents: readonly string[]): Promise<MemoryTreeNode | undefined>;
+  listNodesByDepth(depth: number, agents: readonly string[]): Promise<MemoryTreeNode[]>;
+  listChildrenOf(parentPath: string, agents: readonly string[]): Promise<MemoryTreeNode[]>;
+  /** ANN over summarised tree-node embeddings (1024-d). Raw similarity; the
+   *  recall service applies the hotness boost and final cut. */
+  searchNodes(
+    embedding: readonly number[],
+    opts: { agents: readonly string[]; limit: number; threshold?: number },
+  ): Promise<TreeNodeHit[]>;
+}
+
+export function createVaultReadRepository(db: VaultDb, options: VaultReadRepositoryOptions = {}): VaultReadRepository {
+  const scopeDocuments = (agents: readonly string[]) => namespaceWhere(memoryDocuments.agentId, agents, options.defaultOwner);
+  const scopeNodes = (agents: readonly string[]) => namespaceWhere(memoryTreeNodes.agentId, agents, options.defaultOwner);
+
   return {
     searchChunks(embedding, opts) {
       const vec = vectorParam(embedding);
@@ -78,7 +99,15 @@ export function createVaultReadRepository(db: VaultDb): VaultReadRepository {
         })
         .from(memoryChunks)
         .innerJoin(memoryDocuments, eq(memoryDocuments.id, memoryChunks.documentId))
-        .where(and(isNotNull(memoryChunks.embedding), isNull(memoryDocuments.deletedAt), sql`${similarity} > ${threshold}`))
+        // The namespace lives on the document; the join carries it to the chunk.
+        .where(
+          and(
+            isNotNull(memoryChunks.embedding),
+            isNull(memoryDocuments.deletedAt),
+            sql`${similarity} > ${threshold}`,
+            scopeDocuments(opts.agents),
+          ),
+        )
         .orderBy(sql`${memoryChunks.embedding} <=> ${vec}::vector`)
         .limit(opts.limit)
         .then((rows) =>
@@ -104,28 +133,38 @@ export function createVaultReadRepository(db: VaultDb): VaultReadRepository {
       return db.select().from(memoryChunks).where(eq(memoryChunks.documentId, documentId)).orderBy(asc(memoryChunks.seq));
     },
 
-    async getDocument(id) {
-      const [row] = await db.select().from(memoryDocuments).where(eq(memoryDocuments.id, id));
+    async getDocument(id, agents) {
+      const [row] = await db
+        .select()
+        .from(memoryDocuments)
+        .where(and(eq(memoryDocuments.id, id), scopeDocuments(agents)));
       return row;
     },
 
-    async getNodeByPath(path) {
-      const [row] = await db.select().from(memoryTreeNodes).where(eq(memoryTreeNodes.path, path));
+    async getNodeByPath(path, agents) {
+      const [row] = await db
+        .select()
+        .from(memoryTreeNodes)
+        .where(and(eq(memoryTreeNodes.path, path), scopeNodes(agents)));
       return row;
     },
 
-    listNodesByDepth(depth) {
-      return db.select().from(memoryTreeNodes).where(eq(memoryTreeNodes.depth, depth)).orderBy(asc(memoryTreeNodes.path));
+    listNodesByDepth(depth, agents) {
+      return db
+        .select()
+        .from(memoryTreeNodes)
+        .where(and(eq(memoryTreeNodes.depth, depth), scopeNodes(agents)))
+        .orderBy(asc(memoryTreeNodes.path));
     },
 
     /** The child depth is the parent's segment count ('mail/2026' -> depth-2
      *  months); the '<parent>/%' prefix keeps a sibling month from leaking in. */
-    listChildrenOf(parentPath) {
+    listChildrenOf(parentPath, agents) {
       const childDepth = parentPath.split("/").length;
       return db
         .select()
         .from(memoryTreeNodes)
-        .where(and(eq(memoryTreeNodes.depth, childDepth), like(memoryTreeNodes.path, `${parentPath}/%`)))
+        .where(and(eq(memoryTreeNodes.depth, childDepth), like(memoryTreeNodes.path, `${parentPath}/%`), scopeNodes(agents)))
         .orderBy(asc(memoryTreeNodes.path));
     },
 
@@ -146,7 +185,7 @@ export function createVaultReadRepository(db: VaultDb): VaultReadRepository {
           similarity,
         })
         .from(memoryTreeNodes)
-        .where(and(isNotNull(memoryTreeNodes.embedding), sql`${similarity} > ${threshold}`))
+        .where(and(isNotNull(memoryTreeNodes.embedding), sql`${similarity} > ${threshold}`, scopeNodes(opts.agents)))
         .orderBy(sql`${memoryTreeNodes.embedding} <=> ${vec}::vector`)
         .limit(opts.limit)
         .then((rows) =>

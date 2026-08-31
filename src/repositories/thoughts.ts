@@ -12,6 +12,7 @@
  */
 
 import type { MemoryQuery } from "../db/pool.js";
+import { agentFilter } from "./namespace.js";
 
 export type RelevanceMode = "similarity" | "recency_weighted" | "recent" | "since";
 
@@ -73,18 +74,6 @@ export const CAPTURE = {
   supersedeThreshold: 0.8,
   supersedeLimit: 3,
 } as const;
-
-/** True when the agent list means "no namespace filter". */
-const unbounded = (agents: readonly string[]): boolean => agents.length === 0 || agents.includes("*");
-
-/** SQL fragment + params for the namespace filter. With one agent it matches the
- *  historical `metadata->>'agent_id' = $n` shape; with several it is `= ANY`. */
-function agentFilter(agents: readonly string[], paramOffset: number): { clause: string; params: unknown[] } {
-  if (unbounded(agents)) {
-    return { clause: "TRUE", params: [] };
-  }
-  return { clause: `metadata->>'agent_id' = ANY($${paramOffset}::text[])`, params: [[...agents]] };
-}
 
 export interface ThoughtsRepository {
   searchRanked(query: string, opts: RankedSearchOptions): Promise<RankedResult[]>;
